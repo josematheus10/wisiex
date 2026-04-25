@@ -1,0 +1,5 @@
+{
+  "extends": "@wisiex/tsconfig/frontend",
+  "include": ["src"],
+  "exclude": ["node_modules", "dist"]
+}

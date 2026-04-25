@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         String   @id @default(cuid())
+  username   String   @unique
+  btcBalance Decimal  @default(100) @db.Decimal(20, 8)
+  usdBalance Decimal  @default(100000) @db.Decimal(20, 2)
+  createdAt  DateTime @default(now())
+  orders     Order[]
+}
+
+model Order {
+  id        String      @id @default(cuid())
+  userId    String
+  user      User        @relation(fields: [userId], references: [id])
+  side      OrderSide
+  price     Decimal     @db.Decimal(20, 2)
+  amount    Decimal     @db.Decimal(20, 8)
+  filled    Decimal     @default(0) @db.Decimal(20, 8)
+  status    OrderStatus @default(PENDING)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  makerTrades Trade[] @relation("MakerOrder")
+  takerTrades Trade[] @relation("TakerOrder")
+
+  @@index([userId])
+  @@index([side, status, price])
+}
+
+model Trade {
+  id        String   @id @default(cuid())
+  makerId   String
+  takerId   String
+  makerOrder Order   @relation("MakerOrder", fields: [makerId], references: [id])
+  takerOrder Order   @relation("TakerOrder", fields: [takerId], references: [id])
+  price     Decimal  @db.Decimal(20, 2)
+  amount    Decimal  @db.Decimal(20, 8)
+  makerFee  Decimal  @db.Decimal(20, 8)
+  takerFee  Decimal  @db.Decimal(20, 8)
+  createdAt DateTime @default(now())
+
+  @@index([createdAt(sort: Desc)])
+}
+
+enum OrderSide {
+  BUY
+  SELL
+}
+
+enum OrderStatus {
+  PENDING
+  PARTIAL
+  COMPLETED
+  CANCELLED
+}

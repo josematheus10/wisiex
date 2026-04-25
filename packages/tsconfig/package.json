@@ -1,0 +1,11 @@
+{
+  "name": "@wisiex/tsconfig",
+  "version": "0.0.1",
+  "private": true,
+  "files": ["*.json"],
+  "exports": {
+    "./base": "./base.json",
+    "./frontend": "./frontend.json",
+    "./backend": "./backend.json"
+  }
+}
