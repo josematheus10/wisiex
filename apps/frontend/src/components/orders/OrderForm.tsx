@@ -6,10 +6,11 @@ interface Props {
   token: string
   prefillPrice: string
   prefillSide: 'BUY' | 'SELL'
+  prefillAmount?: string
   onOrderCreated: (order: Order) => void
 }
 
-export function OrderForm({ token, prefillPrice, prefillSide, onOrderCreated }: Props) {
+export function OrderForm({ token, prefillPrice, prefillSide, prefillAmount, onOrderCreated }: Props) {
   const [side, setSide] = useState<'BUY' | 'SELL'>('BUY')
   const [price, setPrice] = useState('')
   const [amount, setAmount] = useState('')
@@ -21,7 +22,10 @@ export function OrderForm({ token, prefillPrice, prefillSide, onOrderCreated }: 
       setPrice(prefillPrice)
       setSide(prefillSide)
     }
-  }, [prefillPrice, prefillSide])
+    if (prefillAmount) {
+      setAmount(prefillAmount)
+    }
+  }, [prefillPrice, prefillSide, prefillAmount])
 
   const total = price && amount ? (Number(price) * Number(amount)).toFixed(2) : '—'
 

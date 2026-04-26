@@ -4,7 +4,19 @@ import type { WisiexWorld } from './world.js'
 
 setDefaultTimeout(15_000)
 
-const TEST_USERS = ['trader_bdd', 'maker_bdd', 'maker2_bdd', 'ui_trader_bdd']
+const TEST_USERS = [
+  'trader_bdd', 'maker_bdd', 'maker2_bdd', 'ui_trader_bdd', 'ui_trader2_bdd',
+  'orderbook_trader', 'ob_buyer_bdd', 'seed_ask_ob_bdd', 'seed_bid_ob_bdd',
+  'trades_trader', 'trades_other_bdd', 'trades_other2_bdd',
+  'trades_buy_maker_bdd', 'trades_sell_maker_bdd',
+  'stats_trader',
+  'fee_trader', 'fee_maker', 'fee_maker2', 'fee_maker3', 'fee_taker',
+  'fee_maker4', 'fee_taker2', 'fee_partial_maker',
+  'matching_trader', 'price_maker', 'price_maker2', 'no_match_maker',
+  'complete_maker', 'partial_maker2', 'fifo_maker1', 'fifo_maker2',
+  'seed_ask_bdd', 'rt_order_placer_bdd', 'rt_trade_maker_bdd', 'rt_trade_taker_bdd',
+  'concurrent_maker_0_bdd', 'concurrent_maker_1_bdd', 'concurrent_maker_2_bdd',
+]
 
 BeforeAll(async function () {
   // Verifica se a API está acessível antes de rodar os cenários

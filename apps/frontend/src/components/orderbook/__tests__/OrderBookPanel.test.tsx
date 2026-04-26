@@ -43,7 +43,7 @@ describe('OrderBookPanel', () => {
 
     fireEvent.click(screen.getByText('49,000').closest('tr')!)
 
-    expect(onEntryClick).toHaveBeenCalledWith('49000', 'SELL')
+    expect(onEntryClick).toHaveBeenCalledWith('49000', 'SELL', '1.5')
   })
 
   it('calls onEntryClick with opposite side when ask row is clicked (SELL -> BUY)', () => {
@@ -52,6 +52,6 @@ describe('OrderBookPanel', () => {
 
     fireEvent.click(screen.getByText('51,000').closest('tr')!)
 
-    expect(onEntryClick).toHaveBeenCalledWith('51000', 'BUY')
+    expect(onEntryClick).toHaveBeenCalledWith('51000', 'BUY', '2')
   })
 })

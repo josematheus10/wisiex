@@ -53,8 +53,6 @@ Motor de Matching
 wisiex/
 ├── apps/
 │   ├── api/                        # Back-end (Fastify + Prisma + PostgreSQL + Redis)
-│   │   ├── prisma/
-│   │   │   └── schema.prisma
 │   │   └── src/
 │   │       ├── app.ts
 │   │       ├── index.ts
@@ -86,6 +84,9 @@ wisiex/
 │   │   │   ├── world.ts
 │   │   │   └── hooks.ts
 │   │   └── cucumber.json
+│   ├── database/                   # Prisma centralizado
+│   │   └── prisma/
+│   │       └── schema.prisma
 │   ├── shared/                     # Tipos e interfaces compartilhados
 │   │   └── src/
 │   │       └── types/

@@ -203,6 +203,12 @@ cd packages/bdd
 pnpm test:report
 ```
 
+## Prisma
+
+O schema Prisma foi centralizado em `packages/database/prisma/schema.prisma`.
+
+Os comandos de banco no backend (`db:generate`, `db:migrate`, `db:push`, `db:studio`) ja apontam para esse caminho.
+
 ## Useful Links
 
 Learn more about the power of Turborepo:

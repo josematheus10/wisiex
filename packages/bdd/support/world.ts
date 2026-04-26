@@ -23,7 +23,8 @@ export class WisiexWorld extends World {
 
   /** Faz uma chamada à API e armazena response + body para as asserções */
   async api(path: string, options?: RequestInit): Promise<unknown> {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
+    const headers: Record<string, string> = {}
+    if (options?.body) headers['Content-Type'] = 'application/json'
     if (this.token) headers['Authorization'] = `Bearer ${this.token}`
 
     this.response = await fetch(`${this.apiBase}${path}`, {

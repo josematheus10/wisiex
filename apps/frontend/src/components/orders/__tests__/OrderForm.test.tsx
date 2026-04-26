@@ -65,6 +65,13 @@ describe('OrderForm', () => {
     expect(screen.getByRole('button', { name: /place sell order/i })).toBeInTheDocument()
   })
 
+  it('prefills amount from prefillAmount prop', () => {
+    render(<OrderForm token="tok" prefillPrice="50000" prefillSide="BUY" prefillAmount="1.5" onOrderCreated={vi.fn()} />)
+
+    const amountInput = screen.getByPlaceholderText('0.00000000')
+    expect((amountInput as HTMLInputElement).value).toBe('1.5')
+  })
+
   it('does not prefill when prefillPrice is empty', () => {
     render(<OrderForm token="tok" prefillPrice="" prefillSide="BUY" onOrderCreated={vi.fn()} />)
 

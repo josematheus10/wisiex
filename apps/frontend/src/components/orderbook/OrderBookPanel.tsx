@@ -2,7 +2,7 @@ import type { OrderBook, OrderBookEntry } from '@wisiex/shared'
 
 interface Props {
   orderBook: OrderBook
-  onEntryClick: (price: string, side: 'BUY' | 'SELL') => void
+  onEntryClick: (price: string, side: 'BUY' | 'SELL', amount: string) => void
 }
 
 export function OrderBookPanel({ orderBook, onEntryClick }: Props) {
@@ -48,13 +48,13 @@ function BookRow({
 }: {
   entry: OrderBookEntry
   side: 'BUY' | 'SELL'
-  onClick: (price: string, side: 'BUY' | 'SELL') => void
+  onClick: (price: string, side: 'BUY' | 'SELL', amount: string) => void
 }) {
   return (
     <tr
       className={`cursor-pointer ${side === 'BUY' ? 'text-success' : 'text-danger'}`}
       style={{ cursor: 'pointer' }}
-      onClick={() => onClick(entry.price, side === 'BUY' ? 'SELL' : 'BUY')}
+      onClick={() => onClick(entry.price, side === 'BUY' ? 'SELL' : 'BUY', entry.amount)}
     >
       <td>{Number(entry.price).toLocaleString()}</td>
       <td className="text-end">{Number(entry.amount).toFixed(6)}</td>

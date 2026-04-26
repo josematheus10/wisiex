@@ -30,6 +30,7 @@ export function TradingPage({ user, token, onLogout }: Props) {
   const [balance, setBalance] = useState({ btc: user.btcBalance, usd: user.usdBalance })
   const [prefillPrice, setPrefillPrice] = useState<string>('')
   const [prefillSide, setPrefillSide] = useState<'BUY' | 'SELL'>('BUY')
+  const [prefillAmount, setPrefillAmount] = useState<string>('')
 
   const socketRef = useSocket(token)
 
@@ -86,6 +87,11 @@ export function TradingPage({ user, token, onLogout }: Props) {
     setPrefillPrice(price)
     setPrefillSide(side)
   }
+  function handleBookClick(price: string, side: 'BUY' | 'SELL', amount: string) {
+    setPrefillPrice(price)
+    setPrefillSide(side)
+    setPrefillAmount(amount)
+  }
 
   return (
     <div className="bg-dark min-vh-100 text-light">
@@ -119,6 +125,7 @@ export function TradingPage({ user, token, onLogout }: Props) {
                   token={token}
                   prefillPrice={prefillPrice}
                   prefillSide={prefillSide}
+                  prefillAmount={prefillAmount}
                   onOrderCreated={handleOrderCreated}
                 />
               </div>

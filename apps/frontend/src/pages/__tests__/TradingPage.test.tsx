@@ -302,6 +302,8 @@ describe('TradingPage', () => {
     await vi.waitFor(() => {
       const priceInput = screen.getByPlaceholderText('0.00') as HTMLInputElement
       expect(priceInput.value).toBe('49000')
+      const amountInput = screen.getByPlaceholderText('0.00000000') as HTMLInputElement
+      expect(amountInput.value).toBe('2')
     })
   })
 })

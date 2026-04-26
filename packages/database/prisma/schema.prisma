@@ -36,16 +36,16 @@ model Order {
 }
 
 model Trade {
-  id        String   @id @default(cuid())
-  makerId   String
-  takerId   String
-  makerOrder Order   @relation("MakerOrder", fields: [makerId], references: [id])
-  takerOrder Order   @relation("TakerOrder", fields: [takerId], references: [id])
-  price     Decimal  @db.Decimal(20, 2)
-  amount    Decimal  @db.Decimal(20, 8)
-  makerFee  Decimal  @db.Decimal(20, 8)
-  takerFee  Decimal  @db.Decimal(20, 8)
-  createdAt DateTime @default(now())
+  id         String   @id @default(cuid())
+  makerId    String
+  takerId    String
+  makerOrder Order    @relation("MakerOrder", fields: [makerId], references: [id])
+  takerOrder Order    @relation("TakerOrder", fields: [takerId], references: [id])
+  price      Decimal  @db.Decimal(20, 2)
+  amount     Decimal  @db.Decimal(20, 8)
+  makerFee   Decimal  @db.Decimal(20, 8)
+  takerFee   Decimal  @db.Decimal(20, 8)
+  createdAt  DateTime @default(now())
 
   @@index([createdAt(sort: Desc)])
 }
