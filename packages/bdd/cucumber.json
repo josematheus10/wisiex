@@ -1,0 +1,9 @@
+{
+  "default": {
+    "requireModule": ["tsx/cjs"],
+    "require": ["support/**/*.ts", "steps/**/**/*.ts"],
+    "paths": ["features/**/*.feature"],
+    "format": ["progress-bar", "html:reports/cucumber.html"],
+    "parallel": 1
+  }
+}

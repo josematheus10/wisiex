@@ -1,0 +1,22 @@
+{
+  "name": "@wisiex/bdd",
+  "version": "0.0.1",
+  "private": true,
+  "scripts": {
+    "test": "cucumber-js",
+    "test:backend": "cucumber-js --tags @backend",
+    "test:frontend": "cucumber-js --tags @frontend",
+    "test:report": "cucumber-js --format html:reports/cucumber.html"
+  },
+  "dependencies": {
+    "@cucumber/cucumber": "^11.3.0",
+    "@wisiex/shared": "workspace:*",
+    "playwright": "^1.52.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "@wisiex/tsconfig": "workspace:*",
+    "tsx": "^4.19.3",
+    "typescript": "^5.9.2"
+  }
+}
