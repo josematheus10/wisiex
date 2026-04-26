@@ -147,6 +147,62 @@ pnpm exec turbo link
 pnpm exec turbo link
 ```
 
+## Testes E2E (Playwright + Cucumber)
+
+Os testes E2E utilizam [Playwright](https://playwright.dev/) com [Cucumber](https://cucumber.io/) e estão localizados em `packages/bdd`.
+
+### Instalação das dependências do Playwright
+
+Na primeira execução, instale o browser Chromium e suas dependências de sistema:
+
+```sh
+cd packages/bdd
+pnpm exec playwright install --with-deps chromium
+```
+
+### Pré-requisitos
+
+Certifique-se de que o backend e o frontend estão em execução antes de rodar os testes:
+
+```sh
+pnpm dev
+```
+
+### Executar todos os testes E2E
+
+```sh
+cd packages/bdd
+pnpm test
+```
+
+### Executar apenas testes de backend
+
+```sh
+cd packages/bdd
+pnpm test:backend
+```
+
+### Executar apenas testes de frontend
+
+```sh
+cd packages/bdd
+WEB_BASE=http://localhost:5173 pnpm test:frontend
+```
+
+### Executar testes de login (frontend)
+
+```sh
+cd packages/bdd
+WEB_BASE=http://localhost:5173 pnpm test:frontend:login
+```
+
+### Gerar relatório HTML
+
+```sh
+cd packages/bdd
+pnpm test:report
+```
+
 ## Useful Links
 
 Learn more about the power of Turborepo:

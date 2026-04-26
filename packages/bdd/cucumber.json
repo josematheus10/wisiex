@@ -5,5 +5,16 @@
     "paths": ["features/**/*.feature"],
     "format": ["progress-bar", "html:reports/cucumber.html"],
     "parallel": 1
+  },
+  "frontend-login": {
+    "requireModule": ["tsx/cjs"],
+    "require": [
+      "support/**/*.ts",
+      "steps/backend/auth.steps.ts",
+      "steps/frontend/login.feature.steps.ts"
+    ],
+    "paths": ["features/login.feature"],
+    "format": ["progress-bar", "html:reports/cucumber-login.html"],
+    "parallel": 1
   }
 }

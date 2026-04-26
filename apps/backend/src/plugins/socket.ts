@@ -1,11 +1,12 @@
 import type { FastifyInstance } from 'fastify'
 import fp from 'fastify-plugin'
 import { Server } from 'socket.io'
+import { corsOriginResolver } from './cors-origin.js'
 
 async function socketPlugin(app: FastifyInstance) {
   const io = new Server(app.server, {
     cors: {
-      origin: process.env['CORS_ORIGIN'] ?? 'http://localhost:5173',
+      origin: corsOriginResolver,
       credentials: true,
     },
   })

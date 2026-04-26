@@ -1,13 +1,19 @@
 import { Queue, Worker } from 'bullmq'
-import type { Redis } from 'ioredis'
+import { Redis } from 'ioredis'
 import type { PrismaClient } from '@prisma/client'
 import type { Server } from 'socket.io'
 import { matchOrder } from './matching-engine.js'
 
 const QUEUE_NAME = 'order-matching'
 
+function makeBullConnection() {
+  return new Redis(process.env['REDIS_URL'] ?? 'redis://localhost:6379', {
+    maxRetriesPerRequest: null,
+  })
+}
+
 export function enqueueOrder(redis: Redis, orderId: string) {
-  const queue = new Queue(QUEUE_NAME, { connection: redis })
+  const queue = new Queue(QUEUE_NAME, { connection: makeBullConnection() })
   return queue.add('match', { orderId })
 }
 
@@ -17,7 +23,7 @@ export function startWorker(prisma: PrismaClient, redis: Redis, io: Server) {
     async (job) => {
       await matchOrder(prisma, io, job.data.orderId)
     },
-    { connection: redis, concurrency: 1 },
+    { connection: makeBullConnection(), concurrency: 1 },
   )
 
   worker.on('failed', (job, err) => {

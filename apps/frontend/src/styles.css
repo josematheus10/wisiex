@@ -1,0 +1,6 @@
+.bg-dark .text-muted,
+.bg-black .text-muted,
+.table-dark .text-muted,
+.card.bg-dark .text-muted {
+  color: #8f9aa5 !important;
+}

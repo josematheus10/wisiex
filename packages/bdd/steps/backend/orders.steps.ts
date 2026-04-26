@@ -58,7 +58,12 @@ Given('tenho uma ordem de compra ativa de {float} BTC a {int} USD', async functi
 
 When('cancelo a ordem', async function (this: WisiexWorld) {
   assert.ok(this.lastOrderId, 'Nenhuma ordem referenciada no cenário')
+  // Fetch the current order state before cancelling for diagnostics
+  await this.api(`/orders/${this.lastOrderId}`)
+  const before = this.responseBody as { order: { status: string } } | null
+  process.stdout.write(`[DEBUG] Order status before cancel: ${JSON.stringify(before)}\n`)
   await this.api(`/orders/${this.lastOrderId}`, { method: 'DELETE' })
+  process.stdout.write(`[DEBUG] Cancel response (${this.response?.status}): ${JSON.stringify(this.responseBody)}\n`)
 })
 
 Then('o status da ordem é {string}', function (this: WisiexWorld, status: string) {

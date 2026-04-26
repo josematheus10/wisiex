@@ -6,6 +6,7 @@
     "test": "cucumber-js",
     "test:backend": "cucumber-js --tags @backend",
     "test:frontend": "cucumber-js --tags @frontend",
+    "test:frontend:login": "cucumber-js --profile frontend-login",
     "test:report": "cucumber-js --format html:reports/cucumber.html"
   },
   "dependencies": {
