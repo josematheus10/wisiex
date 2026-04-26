@@ -14,7 +14,7 @@ vi.mock('../../services/api.js', () => ({
 
 const { mockSocket, mockSocketRef } = vi.hoisted(() => {
   const mockSocket = { on: vi.fn(), off: vi.fn(), emit: vi.fn(), disconnect: vi.fn() }
-  const mockSocketRef = { current: mockSocket }
+  const mockSocketRef = { current: mockSocket } as unknown as { current: import('socket.io-client').Socket | null }
   return { mockSocket, mockSocketRef }
 })
 

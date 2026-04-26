@@ -6,11 +6,13 @@ Feature: Order Book
     Then bids and asks should be displayed
     And orders with same price should be aggregated
 
+  @frontend
   Scenario: Click bid fills sell form
     Given the user clicks a bid entry
     When the bid is selected
     Then the sell form should be filled with price and volume
 
+  @frontend
   Scenario: Click ask fills buy form
     Given the user clicks an ask entry
     When the ask is selected

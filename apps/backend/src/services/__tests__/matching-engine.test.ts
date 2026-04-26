@@ -224,6 +224,79 @@ describe('matchOrder', () => {
     await expect(matchOrder(mockPrisma, mockIo, 'taker1')).resolves.toBeUndefined()
   })
 
+  it('refunds USD price difference to BUY taker when trade price is better', async () => {
+    const taker = {
+      id: 'taker1',
+      userId: 'taker-user',
+      side: 'BUY',
+      price: { toString: () => '51000' },
+      amount: { toString: () => '0.5' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    }
+    const maker = makePrismaOrder({
+      id: 'maker1',
+      userId: 'maker-user',
+      side: 'SELL',
+      price: { toString: () => '50000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    })
+
+    mockPrisma.order.findUnique.mockResolvedValue(taker)
+    mockPrisma.order.findMany.mockResolvedValue([maker])
+
+    const txMock = createTxMock()
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(txMock))
+
+    await matchOrder(mockPrisma, mockIo, 'taker1')
+
+    const usdUpdateCalls = txMock.user.update.mock.calls.filter((call: any) =>
+      call[0]?.data?.usdBalance !== undefined,
+    )
+    expect(usdUpdateCalls.length).toBeGreaterThan(0)
+    const refundCall = usdUpdateCalls.find((call: any) =>
+      call[0]?.where?.id === 'taker-user' && call[0]?.data?.usdBalance?.increment !== undefined,
+    )
+    expect(refundCall).toBeDefined()
+    expect(Number(refundCall[0].data.usdBalance.increment)).toBeCloseTo(500)
+  })
+
+  it('does not refund USD when trade price equals taker price', async () => {
+    const taker = {
+      id: 'taker1',
+      userId: 'taker-user',
+      side: 'BUY',
+      price: { toString: () => '50000' },
+      amount: { toString: () => '0.5' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    }
+    const maker = makePrismaOrder({
+      id: 'maker1',
+      userId: 'maker-user',
+      side: 'SELL',
+      price: { toString: () => '50000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    })
+
+    mockPrisma.order.findUnique.mockResolvedValue(taker)
+    mockPrisma.order.findMany.mockResolvedValue([maker])
+
+    const txMock = createTxMock()
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(txMock))
+
+    await matchOrder(mockPrisma, mockIo, 'taker1')
+
+    const refundCall = txMock.user.update.mock.calls.find((call: any) =>
+      call[0]?.where?.id === 'taker-user' && call[0]?.data?.usdBalance?.increment !== undefined,
+    )
+    expect(refundCall).toBeUndefined()
+  })
+
   it('stops iterating when takerRemaining reaches zero', async () => {
     const taker = {
       id: 'taker1',

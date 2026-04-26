@@ -8,7 +8,7 @@ export function GlobalMatches({ trades }: Props) {
   return (
     <div className="card bg-dark border-secondary">
       <div className="card-header border-secondary py-2">
-        <span className="fw-semibold small">Global Matches</span>
+        <span className="text-white fw-semibold small">Global Matches</span>
       </div>
       <div className="card-body p-0" style={{ maxHeight: 220, overflowY: 'auto' }}>
         <table className="table table-dark table-sm mb-0 small">

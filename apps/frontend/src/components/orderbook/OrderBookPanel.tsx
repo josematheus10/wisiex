@@ -9,7 +9,7 @@ export function OrderBookPanel({ orderBook, onEntryClick }: Props) {
   return (
     <div className="card bg-dark border-secondary h-100">
       <div className="card-header border-secondary py-2">
-        <span className="fw-semibold small">Order Book</span>
+        <span className="text-white fw-semibold small">Order Book</span>
       </div>
       <div className="card-body p-0">
         <table className="table table-dark table-sm mb-0 small">

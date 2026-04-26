@@ -16,6 +16,7 @@ const TEST_USERS = [
   'complete_maker', 'partial_maker2', 'fifo_maker1', 'fifo_maker2',
   'seed_ask_bdd', 'rt_order_placer_bdd', 'rt_trade_maker_bdd', 'rt_trade_taker_bdd',
   'concurrent_maker_0_bdd', 'concurrent_maker_1_bdd', 'concurrent_maker_2_bdd',
+  'buy_order_bdd', 'sell_order_bdd',
 ]
 
 BeforeAll(async function () {
@@ -48,7 +49,7 @@ Before({ tags: '@backend' }, async function (this: WisiexWorld) {
 
 Before(async function (
   this: WisiexWorld,
-  scenario: { pickle: { tags: Array<{ name: string }> }; gherkinDocument: { uri?: string } },
+  scenario: { pickle: { tags: ReadonlyArray<{ name: string }> }; gherkinDocument: { uri?: string } },
 ) {
   const taggedFrontend = scenario.pickle.tags.some((tag) => tag.name === '@frontend')
   const isLoginFeature = (scenario.gherkinDocument.uri ?? '').endsWith('/login.feature')
@@ -61,7 +62,7 @@ Before(async function (
 
 After(async function (
   this: WisiexWorld,
-  scenario: { pickle: { tags: Array<{ name: string }> }; gherkinDocument: { uri?: string } },
+  scenario: { pickle: { tags: ReadonlyArray<{ name: string }> }; gherkinDocument: { uri?: string } },
 ) {
   const taggedFrontend = scenario.pickle.tags.some((tag) => tag.name === '@frontend')
   const isLoginFeature = (scenario.gherkinDocument.uri ?? '').endsWith('/login.feature')

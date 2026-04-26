@@ -6,6 +6,7 @@ vi.mock('../me.js', () => ({ meRoutes: vi.fn() }))
 vi.mock('../orders.js', () => ({ ordersRoutes: vi.fn() }))
 vi.mock('../stats.js', () => ({ statsRoutes: vi.fn() }))
 vi.mock('../trades.js', () => ({ tradesRoutes: vi.fn() }))
+vi.mock('../test.js', () => ({ testRoutes: vi.fn() }))
 
 import { registerRoutes } from '../index.js'
 
@@ -17,7 +18,7 @@ describe('registerRoutes', () => {
     await registerRoutes(app)
     await app.ready()
 
-    expect(registerSpy).toHaveBeenCalledTimes(5)
+    expect(registerSpy).toHaveBeenCalledTimes(6)
     await app.close()
   })
 })

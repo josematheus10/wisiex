@@ -66,6 +66,13 @@ export async function matchOrder(prisma: PrismaClient, io: Server, orderId: stri
       const usdValue = tradeAmount.mul(tradePrice.toString())
 
       if (isBuy) {
+        const priceDiff = new Decimal(taker.price.toString()).minus(tradePrice.toString())
+        if (priceDiff.gt(0)) {
+          await tx.user.update({
+            where: { id: taker.userId },
+            data: { usdBalance: { increment: Number(priceDiff.mul(tradeAmount)) } },
+          })
+        }
         await tx.user.update({
           where: { id: taker.userId },
           data: { btcBalance: { increment: Number(tradeAmount.minus(takerFee)) } },

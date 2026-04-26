@@ -4,6 +4,7 @@ import { meRoutes } from './me.js'
 import { ordersRoutes } from './orders.js'
 import { statsRoutes } from './stats.js'
 import { tradesRoutes } from './trades.js'
+import { testRoutes } from './test.js'
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(authRoutes, { prefix: '/auth' })
@@ -11,4 +12,5 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(ordersRoutes, { prefix: '/orders' })
   await app.register(tradesRoutes, { prefix: '/trades' })
   await app.register(statsRoutes, { prefix: '/stats' })
+  await app.register(testRoutes, { prefix: '/test' })
 }

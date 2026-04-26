@@ -9,6 +9,7 @@ export function createMockPrisma() {
       findUniqueOrThrow: vi.fn(),
       upsert: vi.fn(),
       update: vi.fn(),
+      updateMany: vi.fn(),
     },
     order: {
       create: vi.fn(),
@@ -17,12 +18,14 @@ export function createMockPrisma() {
       findUniqueOrThrow: vi.fn(),
       update: vi.fn(),
       groupBy: vi.fn(),
+      deleteMany: vi.fn(),
     },
     trade: {
       findMany: vi.fn(),
       findFirst: vi.fn(),
       aggregate: vi.fn(),
       create: vi.fn(),
+      deleteMany: vi.fn(),
     },
     $transaction: vi.fn(),
   }

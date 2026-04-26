@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import type { MarketStats, Order, OrderBook, Trade, User } from '@wisiex/shared'
 import {
   apiActiveOrders,
@@ -83,10 +83,6 @@ export function TradingPage({ user, token, onLogout }: Props) {
     setHistory((prev) => [order, ...prev])
   }
 
-  function handleBookClick(price: string, side: 'BUY' | 'SELL') {
-    setPrefillPrice(price)
-    setPrefillSide(side)
-  }
   function handleBookClick(price: string, side: 'BUY' | 'SELL', amount: string) {
     setPrefillPrice(price)
     setPrefillSide(side)

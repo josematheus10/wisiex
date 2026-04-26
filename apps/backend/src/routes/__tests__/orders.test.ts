@@ -32,8 +32,15 @@ describe('ordersRoutes', () => {
     await app.close()
   })
 
-  it('POST / creates an order and enqueues it', async () => {
+  it('POST / creates a BUY order and enqueues it after deducting USD balance', async () => {
     const orderRow = makeOrder()
+    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: 'user1',
+      usdBalance: { toString: () => '100000' },
+      btcBalance: { toString: () => '100' },
+    })
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.user.update.mockResolvedValue(undefined)
     mockPrisma.order.create.mockResolvedValue(orderRow)
 
     const res = await app.inject({
@@ -47,6 +54,69 @@ describe('ordersRoutes', () => {
     const body = res.json()
     expect(body.order.side).toBe('BUY')
     expect(enqueueOrder).toHaveBeenCalledWith({}, 'order1')
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ usdBalance: expect.any(Object) }) }),
+    )
+  })
+
+  it('POST / creates a SELL order and deducts BTC balance', async () => {
+    const orderRow = makeOrder({ side: 'SELL' })
+    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: 'user1',
+      usdBalance: { toString: () => '100000' },
+      btcBalance: { toString: () => '100' },
+    })
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.order.create.mockResolvedValue(orderRow)
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/orders',
+      headers: { Authorization: `Bearer ${token}` },
+      payload: { side: 'SELL', price: '50000', amount: '0.5' },
+    })
+
+    expect(res.statusCode).toBe(201)
+    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ btcBalance: expect.any(Object) }) }),
+    )
+  })
+
+  it('POST / returns 400 with insufficient USD for BUY order', async () => {
+    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: 'user1',
+      usdBalance: { toString: () => '1000' },
+      btcBalance: { toString: () => '100' },
+    })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/orders',
+      headers: { Authorization: `Bearer ${token}` },
+      payload: { side: 'BUY', price: '50000', amount: '0.5' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Insufficient balance')
+  })
+
+  it('POST / returns 400 with insufficient BTC for SELL order', async () => {
+    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
+      id: 'user1',
+      usdBalance: { toString: () => '100000' },
+      btcBalance: { toString: () => '0.1' },
+    })
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/orders',
+      headers: { Authorization: `Bearer ${token}` },
+      payload: { side: 'SELL', price: '50000', amount: '0.5' },
+    })
+
+    expect(res.statusCode).toBe(400)
+    expect(res.json().error).toBe('Insufficient balance')
   })
 
   it('POST / returns 401 without token', async () => {
@@ -104,7 +174,7 @@ describe('ordersRoutes', () => {
     expect(res.statusCode).toBe(401)
   })
 
-  it('DELETE /:id cancels BUY order and refunds USD', async () => {
+  it('DELETE /:id cancels BUY order atomically and refunds USD', async () => {
     const order = makeOrder({
       id: 'order1',
       userId: 'user1',
@@ -115,6 +185,7 @@ describe('ordersRoutes', () => {
       status: 'PENDING',
     })
     mockPrisma.order.findUniqueOrThrow.mockResolvedValue(order)
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
     mockPrisma.user.update.mockResolvedValue(undefined)
 
@@ -125,12 +196,13 @@ describe('ordersRoutes', () => {
     })
 
     expect(res.statusCode).toBe(200)
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce()
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ usdBalance: expect.any(Object) }) }),
     )
   })
 
-  it('DELETE /:id cancels SELL order and refunds BTC', async () => {
+  it('DELETE /:id cancels SELL order atomically and refunds BTC', async () => {
     const order = makeOrder({
       id: 'order1',
       userId: 'user1',
@@ -141,6 +213,7 @@ describe('ordersRoutes', () => {
       status: 'PARTIAL',
     })
     mockPrisma.order.findUniqueOrThrow.mockResolvedValue(order)
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
     mockPrisma.user.update.mockResolvedValue(undefined)
 
@@ -151,6 +224,7 @@ describe('ordersRoutes', () => {
     })
 
     expect(res.statusCode).toBe(200)
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce()
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ btcBalance: expect.any(Object) }) }),
     )

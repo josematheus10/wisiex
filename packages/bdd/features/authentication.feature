@@ -15,6 +15,7 @@ Feature: User Authentication
     Then a JWT token should be generated
     And the user should be authenticated
 
+  @frontend
   Scenario: Redirect after login
     Given the user is authenticated
     When the login is successful
