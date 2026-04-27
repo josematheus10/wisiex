@@ -1,4 +1,4 @@
-import { useState, useEffect, type FormEvent } from 'react'
+import { useState, useEffect, type FormEvent, type KeyboardEvent, type ClipboardEvent } from 'react'
 import type { Order } from '@wisiex/shared'
 import { apiCreateOrder } from '../../services/api.js'
 
@@ -29,8 +29,51 @@ export function OrderForm({ token, prefillPrice, prefillSide, prefillAmount, onO
 
   const total = price && amount ? (Number(price) * Number(amount)).toFixed(2) : '—'
 
+  function handleAmountChange(value: string) {
+    if (value.includes('-')) {
+      setError('Invalid amount')
+      setAmount('')
+      return
+    }
+    const parts = value.split('.')
+    if (parts.length === 2 && parts[1].length > 9) {
+      setAmount(`${parts[0]}.${parts[1].slice(0, 9)}`)
+    } else {
+      setAmount(value)
+    }
+    setError('')
+  }
+
+  function handleAmountBlur() {
+    if (!amount) return
+    const num = parseFloat(amount)
+    if (!isNaN(num) && num >= 0) {
+      setAmount(num.toFixed(9))
+    }
+  }
+
+  function handleAmountKeyDown(e: KeyboardEvent<HTMLInputElement>) {
+    if (e.key === '-') {
+      e.preventDefault()
+      setAmount((prev) => prev || '0.000000000')
+    }
+  }
+
+  function handleAmountPaste(e: ClipboardEvent<HTMLInputElement>) {
+    const pasted = e.clipboardData.getData('text')
+    if (pasted.includes('-')) {
+      e.preventDefault()
+      setAmount((prev) => prev || '0.000000000')
+    }
+  }
+
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
+    const numAmount = parseFloat(amount)
+    if (!amount || isNaN(numAmount) || numAmount <= 0) {
+      setError('Amount must be greater than zero')
+      return
+    }
     setError('')
     setLoading(true)
     try {
@@ -81,13 +124,14 @@ export function OrderForm({ token, prefillPrice, prefillSide, prefillAmount, onO
             <label className="form-label small text-muted">Amount (BTC)</label>
             <input
               className="form-control form-control-sm bg-dark text-light border-secondary"
-              type="number"
-              step="0.00000001"
-              min="0.00000001"
+              type="text"
+              inputMode="decimal"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
-              placeholder="0.00000000"
-              required
+              onChange={(e) => handleAmountChange(e.target.value)}
+              onBlur={handleAmountBlur}
+              onKeyDown={handleAmountKeyDown}
+              onPaste={handleAmountPaste}
+              placeholder="0.000000000"
             />
           </div>
           <div className="d-flex justify-content-between mb-3 small text-muted">

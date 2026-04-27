@@ -33,7 +33,7 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
               <th>Side</th>
               <th className="text-end">Price</th>
               <th className="text-end">Remaining</th>
-              <th className="text-end">Actions</th>
+              {/* <th className="text-end">Actions</th> //feature desligada */}
             </tr>
           </thead>
           <tbody>
@@ -44,7 +44,7 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
                 </td>
                 <td className="text-end">{Number(order.price).toLocaleString()}</td>
                 <td className="text-end">{Number(order.remaining).toFixed(6)}</td>
-                <td className="text-end">
+                {/* <td className="text-end">
                   <button
                     data-bs-toggle="tooltip" 
                     data-bs-placement="bottom" 
@@ -54,7 +54,7 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
                   >
                     ✕
                   </button>
-                </td>
+                </td> */}
               </tr>
             ))}
             {orders.length === 0 && (

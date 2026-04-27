@@ -1,3 +1,4 @@
+@backend
 Feature: Create Orders
 
   Scenario: Create buy order
@@ -139,5 +140,5 @@ Feature: Create Orders
   Scenario: Prevent zero or negative BTC orders
     Given the user is filling the order form
     When the user enters "0.000000000" as BTC amount
-    Then the system should reject the order
+    Then the form should reject the order
     And display an error "Amount must be greater than zero"

@@ -39,6 +39,11 @@ export async function testRoutes(app: FastifyInstance) {
     async handler(request, reply) {
       const { username } = request.params
       const { btcBalance, usdBalance } = request.body
+      const btcVal = parseFloat(btcBalance)
+      const usdVal = parseFloat(usdBalance)
+      if (isNaN(btcVal) || btcVal < 0 || isNaN(usdVal) || usdVal < 0) {
+        return reply.status(400).send({ error: 'Invalid balance value' })
+      }
       await app.prisma.user.update({
         where: { username },
         data: { btcBalance, usdBalance },

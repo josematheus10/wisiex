@@ -270,7 +270,7 @@ describe('TradingPage', () => {
     })
 
     fireEvent.change(screen.getByPlaceholderText('0.00'), { target: { value: '50000' } })
-    fireEvent.change(screen.getByPlaceholderText('0.00000000'), { target: { value: '1' } })
+    fireEvent.change(screen.getByPlaceholderText('0.000000000'), { target: { value: '1' } })
 
     await act(async () => {
       fireEvent.submit(screen.getByRole('button', { name: /place buy order/i }))
@@ -315,7 +315,7 @@ describe('TradingPage', () => {
     await vi.waitFor(() => {
       const priceInput = screen.getByPlaceholderText('0.00') as HTMLInputElement
       expect(priceInput.value).toBe('49000')
-      const amountInput = screen.getByPlaceholderText('0.00000000') as HTMLInputElement
+      const amountInput = screen.getByPlaceholderText('0.000000000') as HTMLInputElement
       expect(amountInput.value).toBe('2')
     })
   })

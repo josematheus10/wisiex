@@ -16,6 +16,7 @@ export function OrderHistory({ orders }: Props) {
             <tr className="text-muted">
               <th>Side</th>
               <th className="text-end">Price</th>
+              <th className="text-end">Amount</th>
               <th className="text-end">Filled</th>
               <th className="text-end">Status</th>
             </tr>
@@ -27,11 +28,16 @@ export function OrderHistory({ orders }: Props) {
                   {order.side}
                 </td>
                 <td className="text-end">{Number(order.price).toLocaleString()}</td>
+                <td className="text-end">{Number(order.amount).toFixed(6)}</td>
                 <td className="text-end">{Number(order.filled).toFixed(6)}</td>
                 <td className="text-end">
                   <span
                     className={`badge ${
-                      order.status === 'COMPLETED' ? 'bg-success' : 'bg-secondary'
+                      order.status === 'COMPLETED'
+                        ? 'bg-success'
+                        : order.status === 'CANCELLED'
+                          ? 'bg-danger'
+                          : 'bg-secondary'
                     }`}
                   >
                     {order.status}
@@ -41,7 +47,7 @@ export function OrderHistory({ orders }: Props) {
             ))}
             {orders.length === 0 && (
               <tr>
-                <td colSpan={4} className="text-muted text-center py-3">
+                <td colSpan={5} className="text-muted text-center py-3">
                   No history yet
                 </td>
               </tr>

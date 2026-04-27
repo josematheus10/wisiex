@@ -76,13 +76,20 @@ export function TradingPage({ user, token, onLogout }: Props) {
     }
   }, [socketRef])
 
+  useEffect(() => {
+    const interval = setInterval(() => {
+      void apiMe(token).then((r) => setBalance({ btc: r.btcBalance, usd: r.usdBalance }))
+    }, 5000)
+
+    return () => clearInterval(interval)
+  }, [token])
+
   function handleOrderCreated(order: Order) {
     setActiveOrders((prev) => [order, ...prev])
   }
 
   function handleOrderCancelled(order: Order) {
     setActiveOrders((prev) => prev.filter((o) => o.id !== order.id))
-    setHistory((prev) => [order, ...prev])
   }
 
   function handleBookClick(price: string, side: 'BUY' | 'SELL', amount: string) {
