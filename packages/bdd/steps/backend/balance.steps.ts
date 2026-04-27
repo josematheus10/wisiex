@@ -8,19 +8,23 @@ type BalWorld = WisiexWorld & {
   secondResponse?: Response
   secondResponseBody?: unknown
   openOrderId?: string
+  partialInitialUsd?: number
+  partialInitialBtc?: number
 }
 
 Given('the user has {int} USD available', async function (this: BalWorld, usd: number) {
   this.balanceUser = 'balance_usd_bdd'
+  this.partialInitialUsd = usd
   await this.loginAs(this.balanceUser)
   await this.api(`/test/users/${this.balanceUser}/balance`, {
     method: 'PUT',
-    body: JSON.stringify({ btcBalance: '100', usdBalance: String(usd) }),
+    body: JSON.stringify({ btcBalance: '0', usdBalance: String(usd) }),
   })
 })
 
 Given('the user has {float} BTC available', async function (this: BalWorld, btc: number) {
   this.balanceUser = 'balance_btc_bdd'
+  this.partialInitialBtc = btc
   await this.loginAs(this.balanceUser)
   await this.api(`/test/users/${this.balanceUser}/balance`, {
     method: 'PUT',

@@ -28,6 +28,7 @@ function createTxMock(
   makerBalance: any = { btcBalance: { toString: () => '50' }, usdBalance: { toString: () => '200000' } },
   takerBalance: any = { btcBalance: { toString: () => '99' }, usdBalance: { toString: () => '50000' } },
   updatedMakerUser = { username: 'maker' },
+  feeWallet: any = { id: 'fee-wallet-id' },
 ) {
   const updatedMaker = {
     id: 'maker1',
@@ -51,6 +52,7 @@ function createTxMock(
     user: {
       update: vi.fn().mockResolvedValue(undefined),
       findUnique: vi.fn()
+        .mockResolvedValueOnce(feeWallet)
         .mockResolvedValueOnce(makerBalance)
         .mockResolvedValueOnce(takerBalance),
     },
@@ -218,7 +220,7 @@ describe('matchOrder', () => {
     mockPrisma.order.findUnique.mockResolvedValue(taker)
     mockPrisma.order.findMany.mockResolvedValue([maker])
 
-    const txMock = createTxMock(null, null)
+    const txMock = createTxMock(null, null, { username: 'maker' }, { id: 'fee-wallet-id' })
     mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(txMock))
 
     await expect(matchOrder(mockPrisma, mockIo, 'taker1')).resolves.toBeUndefined()
@@ -260,7 +262,9 @@ describe('matchOrder', () => {
       call[0]?.where?.id === 'taker-user' && call[0]?.data?.usdBalance?.increment !== undefined,
     )
     expect(refundCall).toBeDefined()
-    expect(Number(refundCall[0].data.usdBalance.increment)).toBeCloseTo(500)
+    if (refundCall) {
+      expect(Number(refundCall[0].data.usdBalance.increment)).toBeCloseTo(500)
+    }
   })
 
   it('does not refund USD when trade price equals taker price', async () => {
@@ -370,6 +374,7 @@ describe('matchOrder', () => {
       user: {
         update: vi.fn().mockResolvedValue(undefined),
         findUnique: vi.fn()
+          .mockResolvedValueOnce({ id: 'fee-wallet-id' })
           .mockResolvedValueOnce({ btcBalance: { toString: () => '50' }, usdBalance: { toString: () => '200000' } })
           .mockResolvedValueOnce({ btcBalance: { toString: () => '101' }, usdBalance: { toString: () => '75000' } }),
       },
@@ -439,5 +444,82 @@ describe('matchOrder', () => {
     await matchOrder(mockPrisma, mockIo, 'taker1')
 
     expect(roomEmit).toHaveBeenCalledWith('order:update', expect.any(Object))
+  })
+
+  it('skips fee wallet update when fee wallet not found', async () => {
+    const taker = {
+      id: 'taker1',
+      userId: 'taker-user',
+      side: 'BUY',
+      price: { toString: () => '51000' },
+      amount: { toString: () => '0.5' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    }
+    const maker = makePrismaOrder()
+
+    mockPrisma.order.findUnique.mockResolvedValue(taker)
+    mockPrisma.order.findMany.mockResolvedValue([maker])
+
+    const txMock = createTxMock(
+      { btcBalance: { toString: () => '50' }, usdBalance: { toString: () => '200000' } },
+      { btcBalance: { toString: () => '99' }, usdBalance: { toString: () => '50000' } },
+      { username: 'maker' },
+      null,
+    )
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(txMock))
+
+    await expect(matchOrder(mockPrisma, mockIo, 'taker1')).resolves.toBeUndefined()
+
+    const feeWalletUpdateCall = txMock.user.update.mock.calls.find((call: any) =>
+      call[0]?.where?.id === 'fee-wallet-id',
+    )
+    expect(feeWalletUpdateCall).toBeUndefined()
+  })
+
+  it('accumulates fees in the fee wallet during trade execution', async () => {
+    const taker = {
+      id: 'taker1',
+      userId: 'taker-user',
+      side: 'BUY',
+      price: { toString: () => '10000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    }
+    const maker = makePrismaOrder({
+      id: 'maker1',
+      userId: 'maker-user',
+      side: 'SELL',
+      price: { toString: () => '10000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    })
+
+    mockPrisma.order.findUnique.mockResolvedValue(taker)
+    mockPrisma.order.findMany.mockResolvedValue([maker])
+
+    const feeWallet = { id: 'fee-wallet-id', btcBalance: { toString: () => '0' } }
+    const txMock = createTxMock(
+      { btcBalance: { toString: () => '50' }, usdBalance: { toString: () => '200000' } },
+      { btcBalance: { toString: () => '99' }, usdBalance: { toString: () => '50000' } },
+      { username: 'maker' },
+      feeWallet,
+    )
+    mockPrisma.$transaction.mockImplementation(async (cb: any) => cb(txMock))
+
+    await matchOrder(mockPrisma, mockIo, 'taker1')
+
+    const feeWalletUpdateCall = txMock.user.update.mock.calls.find((call: any) =>
+      call[0]?.where?.id === 'fee-wallet-id',
+    )
+    expect(feeWalletUpdateCall).toBeDefined()
+    if (feeWalletUpdateCall) {
+      expect(feeWalletUpdateCall[0].data.btcBalance.increment).toBeDefined()
+      const feesAccumulated = feeWalletUpdateCall[0].data.btcBalance.increment
+      const expectedFees = 1 * 0.005 + 1 * 0.003
+      expect(feesAccumulated).toBeCloseTo(expectedFees)
+    }
   })
 })

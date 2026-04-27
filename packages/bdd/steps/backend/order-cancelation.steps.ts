@@ -124,18 +124,36 @@ Given('{int} USD was reserved', async function (this: CancelWorld, usd: number) 
 })
 
 Given('{float} BTC has already been executed', async function (this: CancelWorld, amount: number) {
-  await this.loginAs('cancel_partial_seller_bdd')
-  await this.api('/test/users/cancel_partial_seller_bdd/balance', {
-    method: 'PUT',
-    body: JSON.stringify({ btcBalance: String(amount), usdBalance: '0' }),
-  })
-  await this.api('/orders', {
-    method: 'POST',
-    body: JSON.stringify({ side: 'SELL', price: '10000', amount: String(amount) }),
-  })
-  await this.loginAs('cancel_partial_bdd')
+  const savedToken = this.token
+  await this.api('/orders/active')
+  const activeBody = this.responseBody as { orders: Order[] }
+  const mainOrder = (activeBody.orders ?? []).find((o) => o.id === this.cancelOrderId)
+  const mainSide = mainOrder?.side ?? 'BUY'
+
+  if (mainSide === 'SELL') {
+    await this.loginAs('cancel_partial_buyer_bdd')
+    await this.api('/test/users/cancel_partial_buyer_bdd/balance', {
+      method: 'PUT',
+      body: JSON.stringify({ btcBalance: '0', usdBalance: String(amount * 20000) }),
+    })
+    await this.api('/orders', {
+      method: 'POST',
+      body: JSON.stringify({ side: 'BUY', price: '10000', amount: String(amount) }),
+    })
+  } else {
+    await this.loginAs('cancel_partial_seller_bdd')
+    await this.api('/test/users/cancel_partial_seller_bdd/balance', {
+      method: 'PUT',
+      body: JSON.stringify({ btcBalance: String(amount), usdBalance: '0' }),
+    })
+    await this.api('/orders', {
+      method: 'POST',
+      body: JSON.stringify({ side: 'SELL', price: '10000', amount: String(amount) }),
+    })
+  }
+  this.token = savedToken
   const filled = await waitForStatus(this, this.cancelOrderId!, 'PARTIAL', 8000)
-  assert.ok(filled, `Expected buy order to be PARTIAL after ${amount} BTC sell`)
+  assert.ok(filled, `Expected order to be PARTIAL after ${amount} BTC execution`)
 })
 
 Given('{int} USD has already been spent', async function (this: CancelWorld, usd: number) {
@@ -279,11 +297,6 @@ When('{string} cancels the order {string}', async function (this: CancelWorld, u
   this.cancelResponseStatus = this.response?.status
 })
 
-Then('the order status should be {string}', async function (this: CancelWorld, status: string) {
-  const body = this.responseBody as { order: Order }
-  assert.equal(body?.order?.status, status, `Expected status ${status}, got ${body?.order?.status}`)
-})
-
 Then('the {int} USD should be returned to the available balance', async function (this: CancelWorld, usd: number) {
   await this.api('/me')
   const body = this.responseBody as { usdBalance: string }
@@ -358,6 +371,88 @@ Then('the error message should be {string}', function (this: CancelWorld, messag
   assert.equal(this.cancelErrorMessage, message, `Expected "${message}", got "${this.cancelErrorMessage}"`)
 })
 
+Given('the user has created a buy order of {int} BTC at {int} USD', async function (this: CancelWorld, amount: number, price: number) {
+  await fetch(`${this.apiBase}/test/reset`, { method: 'DELETE' })
+  await this.loginAs('cancel_untagged_buy_bdd')
+  await this.api('/test/users/cancel_untagged_buy_bdd/balance', {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '0', usdBalance: String(amount * price) }),
+  })
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: 'BUY', price: String(price), amount: String(amount) }),
+  })
+  const body = this.responseBody as { order: Order }
+  this.cancelOrderId = body?.order?.id
+  this.activeOrderId = body?.order?.id
+})
+
+Given('the user has created a sell order of {int} BTC at {int} USD', async function (this: CancelWorld, amount: number, price: number) {
+  await fetch(`${this.apiBase}/test/reset`, { method: 'DELETE' })
+  await this.loginAs('cancel_untagged_sell_bdd')
+  await this.api('/test/users/cancel_untagged_sell_bdd/balance', {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: String(amount), usdBalance: '0' }),
+  })
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: 'SELL', price: String(price), amount: String(amount) }),
+  })
+  const body = this.responseBody as { order: Order }
+  this.cancelOrderId = body?.order?.id
+  this.activeOrderId = body?.order?.id
+})
+
+Given('{int} BTC was reserved', async function (this: CancelWorld, btc: number) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const reserved = (body.orders ?? [])
+    .filter((o) => o.side === 'SELL')
+    .reduce((sum, o) => sum + Number(o.remaining), 0)
+  assert.ok(Math.abs(reserved - btc) < 0.0001, `Expected ${btc} BTC reserved, got ${reserved}`)
+})
+
+Given('{float} BTC has already been sold', async function (this: CancelWorld, btc: number) {
+  const savedToken = this.token
+  await this.loginAs('cancel_untagged_buyer_bdd')
+  await this.api('/test/users/cancel_untagged_buyer_bdd/balance', {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '0', usdBalance: String(btc * 15000) }),
+  })
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: 'BUY', price: '10000', amount: String(btc) }),
+  })
+  this.token = savedToken
+  const filled = await waitForStatus(this, this.cancelOrderId!, 'PARTIAL', 8000)
+  assert.ok(filled, `Expected sell order to be PARTIAL after ${btc} BTC buy`)
+  await this.api('/orders/active')
+  const activeBody = this.responseBody as { orders: Order[] }
+  const order = (activeBody.orders ?? []).find((o) => o.id === this.cancelOrderId)
+  assert.ok(order, 'Expected partially filled order in active orders')
+  assert.ok(Math.abs(Number(order.filled) - btc) < 0.0001, `Expected ${btc} BTC sold, got ${order.filled}`)
+})
+
+Given('{float} BTC is still reserved', async function (this: CancelWorld, btc: number) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const order = (body.orders ?? []).find((o) => o.id === this.cancelOrderId)
+  assert.ok(order, 'Expected partially filled order in active orders')
+  assert.ok(Math.abs(Number(order.remaining) - btc) < 0.0001, `Expected ${btc} BTC still reserved, got ${order.remaining}`)
+})
+
+Then('the remaining {float} BTC should be returned to the available balance', async function (this: CancelWorld, btc: number) {
+  await this.api('/me')
+  const body = this.responseBody as { btcBalance: string }
+  assert.ok(Math.abs(Number(body.btcBalance) - btc) < 0.0001, `Expected ${btc} BTC returned, got ${body.btcBalance}`)
+})
+
+Then('the user should keep the USD received from the executed portion', async function (this: CancelWorld) {
+  await this.api('/me')
+  const body = this.responseBody as { usdBalance: string }
+  assert.ok(Number(body.usdBalance) > 0, `Expected positive USD from partial execution, got ${body.usdBalance}`)
+})
+
 Then('the order status should remain unchanged', async function (this: CancelWorld) {
   const orderId = this.cancelOrderId
   assert.ok(orderId, 'Must have a cancel order ID')
@@ -372,7 +467,9 @@ Then('the order status should remain unchanged', async function (this: CancelWor
 After(async function (this: CancelWorld) {
   const users = [
     'cancel_buy_bdd', 'cancel_sell_bdd', 'cancel_partial_bdd', 'cancel_partial_seller_bdd',
-    'cancel_maker_bdd', 'cancel_taker_bdd', 'cancel_conc_buyer_bdd', 'cancel_conc_seller_bdd',
+    'cancel_partial_buyer_bdd', 'cancel_maker_bdd', 'cancel_taker_bdd',
+    'cancel_conc_buyer_bdd', 'cancel_conc_seller_bdd',
+    'cancel_untagged_buy_bdd', 'cancel_untagged_sell_bdd', 'cancel_untagged_buyer_bdd',
     'alice', 'bob',
   ]
   for (const username of users) {

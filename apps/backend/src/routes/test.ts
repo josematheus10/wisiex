@@ -15,6 +15,12 @@ export async function testRoutes(app: FastifyInstance) {
         app.prisma.order.deleteMany({}),
         app.prisma.user.updateMany({ data: { btcBalance: 100, usdBalance: 100000 } }),
       ])
+      
+      await app.prisma.user.update({
+        where: { username: 'fee_wallet' },
+        data: { btcBalance: 0, usdBalance: 0 },
+      })
+      
       return reply.send({ ok: true })
     },
   })

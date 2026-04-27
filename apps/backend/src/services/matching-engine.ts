@@ -92,6 +92,18 @@ export async function matchOrder(prisma: PrismaClient, io: Server, orderId: stri
         })
       }
 
+      const totalFee = makerFee.plus(takerFee)
+      const feeWallet = await tx.user.findUnique({
+        where: { username: 'fee_wallet' },
+      })
+
+      if (feeWallet) {
+        await tx.user.update({
+          where: { id: feeWallet.id },
+          data: { btcBalance: { increment: Number(totalFee) } },
+        })
+      }
+
       // Broadcast to room
       const makerBalance = await tx.user.findUnique({ where: { id: maker.userId } })
       const takerBalance = await tx.user.findUnique({ where: { id: taker.userId } })

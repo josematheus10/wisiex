@@ -33,7 +33,7 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
               <th>Side</th>
               <th className="text-end">Price</th>
               <th className="text-end">Remaining</th>
-              <th></th>
+              <th className="text-end">Actions</th>
             </tr>
           </thead>
           <tbody>
@@ -46,6 +46,9 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
                 <td className="text-end">{Number(order.remaining).toFixed(6)}</td>
                 <td className="text-end">
                   <button
+                    data-bs-toggle="tooltip" 
+                    data-bs-placement="bottom" 
+                    title="cancel order"
                     className="btn btn-link btn-sm text-danger p-0"
                     onClick={() => cancel(order)}
                   >

@@ -3,11 +3,17 @@ import Fastify from 'fastify'
 
 const mockConnect = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
 const mockDisconnect = vi.hoisted(() => vi.fn().mockResolvedValue(undefined))
+const mockFindUnique = vi.hoisted(() => vi.fn().mockResolvedValue(null))
+const mockCreate = vi.hoisted(() => vi.fn().mockResolvedValue({ id: 'fee-wallet-id', username: 'fee_wallet' }))
 
 vi.mock('@prisma/client', () => ({
   PrismaClient: class MockPrismaClient {
     $connect = mockConnect
     $disconnect = mockDisconnect
+    user = {
+      findUnique: mockFindUnique,
+      create: mockCreate,
+    }
   },
 }))
 
@@ -37,5 +43,15 @@ describe('registerPrisma', () => {
     await app.close()
 
     expect(mockDisconnect).toHaveBeenCalled()
+  })
+
+  it('does not create fee wallet when it already exists', async () => {
+    mockFindUnique.mockResolvedValueOnce({ id: 'existing-fee-wallet', username: 'fee_wallet' })
+
+    app = Fastify({ logger: false })
+    await registerPrisma(app)
+    await app.ready()
+
+    expect(mockCreate).not.toHaveBeenCalled()
   })
 })

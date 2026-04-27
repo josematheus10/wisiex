@@ -122,6 +122,19 @@ describe('ordersRoutes', () => {
     expect(res.statusCode).toBe(400)
   })
 
+  it('POST / re-throws non-balance errors from transaction', async () => {
+    mockPrisma.$transaction.mockRejectedValue(new Error('DB connection error'))
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/orders',
+      headers: { Authorization: `Bearer ${token}` },
+      payload: { side: 'BUY', price: '50000', amount: '0.5' },
+    })
+
+    expect(res.statusCode).toBe(500)
+  })
+
   it('GET /active returns active orders', async () => {
     mockPrisma.order.findMany.mockResolvedValue([makeOrder()])
 
@@ -172,6 +185,7 @@ describe('ordersRoutes', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
     mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.findUnique.mockResolvedValue(null)
 
     const res = await app.inject({
       method: 'DELETE',
@@ -200,6 +214,7 @@ describe('ordersRoutes', () => {
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
     mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
     mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.findUnique.mockResolvedValue(null)
 
     const res = await app.inject({
       method: 'DELETE',
@@ -212,6 +227,60 @@ describe('ordersRoutes', () => {
     expect(mockPrisma.user.update).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ btcBalance: expect.any(Object) }) }),
     )
+  })
+
+  it('DELETE /:id emits order:update and balance:update socket events after cancel', async () => {
+    const order = makeOrder({
+      id: 'order1',
+      userId: 'user1',
+      side: 'BUY',
+      price: { toString: () => '50000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    })
+    const updatedUser = { btcBalance: { toString: () => '1' }, usdBalance: { toString: () => '50000' } }
+    mockPrisma.order.findUniqueOrThrow.mockResolvedValue(order)
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
+    mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.findUnique.mockResolvedValue(updatedUser)
+
+    await app.inject({
+      method: 'DELETE',
+      url: '/orders/order1',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    expect(mockIo.to).toHaveBeenCalledWith('user:user1')
+    expect(mockIo._roomEmit).toHaveBeenCalledWith('order:update', expect.objectContaining({ order: expect.any(Object) }))
+    expect(mockIo._roomEmit).toHaveBeenCalledWith('balance:update', { btcBalance: '1', usdBalance: '50000' })
+  })
+
+  it('DELETE /:id skips balance:update emission when user not found after cancel', async () => {
+    const order = makeOrder({
+      id: 'order1',
+      userId: 'user1',
+      side: 'BUY',
+      price: { toString: () => '50000' },
+      amount: { toString: () => '1' },
+      filled: { toString: () => '0' },
+      status: 'PENDING',
+    })
+    mockPrisma.order.findUniqueOrThrow.mockResolvedValue(order)
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.order.update.mockResolvedValue({ ...order, status: 'CANCELLED' })
+    mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.findUnique.mockResolvedValue(null)
+
+    await app.inject({
+      method: 'DELETE',
+      url: '/orders/order1',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    expect(mockIo._roomEmit).toHaveBeenCalledWith('order:update', expect.any(Object))
+    expect(mockIo._roomEmit).not.toHaveBeenCalledWith('balance:update', expect.anything())
   })
 
   it('DELETE /:id returns 403 with ownership error when order belongs to another user', async () => {
@@ -257,6 +326,31 @@ describe('ordersRoutes', () => {
   it('DELETE /:id returns 401 without token', async () => {
     const res = await app.inject({ method: 'DELETE', url: '/orders/order1' })
     expect(res.statusCode).toBe(401)
+  })
+
+  it('DELETE /:id returns 404 when order not found (error message contains "record")', async () => {
+    mockPrisma.order.findUniqueOrThrow.mockRejectedValue(new Error('No record found'))
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/orders/order1',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(404)
+    expect(res.json().error).toBe('Order not found')
+  })
+
+  it('DELETE /:id re-throws generic errors from findUniqueOrThrow', async () => {
+    mockPrisma.order.findUniqueOrThrow.mockRejectedValue(new Error('DB connection error'))
+
+    const res = await app.inject({
+      method: 'DELETE',
+      url: '/orders/order1',
+      headers: { Authorization: `Bearer ${token}` },
+    })
+
+    expect(res.statusCode).toBe(500)
   })
 
   it('GET /book returns order book', async () => {

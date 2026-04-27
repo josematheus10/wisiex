@@ -1,221 +1,208 @@
-# Turborepo starter
+# 🚀 Wisiex Exchange
 
-This Turborepo starter is maintained by the Turborepo core team.
+Order matching system for cryptocurrency trading. Simulates a BTC/USD exchange with authentication, order book, matching engine, and transaction history.
 
-## Using this example
+![Wisiex Platform](./docs/plataform.png)
 
-Run the following command:
+## 🎯 Features
 
-```sh
-npx create-turbo@latest
-```
+### Authentication
+- Login with username (auto-signup if not exists)
+- New users start with: 100 BTC + 100,000 USD
+- JWT session (Bearer token)
 
-## What's inside?
+### Trading
+- **Buy/Sell Forms** — create orders with price and quantity
+- **Order Book (Bid/Ask)** — view active orders, click to prefill
+- **Global Matches** — table with latest trades in real-time
+- **My Orders** — active (with cancel) + full history
+- **Statistics** — last price, 24h volume, high/low, balance
 
-This Turborepo includes the following packages/apps:
+### Matching Engine
+- Limit orders: execute at specified price or better
+- Partial execution: order stays in book until complete
+- Queue processing (BullMQ/Redis) — no race conditions
+- Fees: 0.5% maker + 0.3% taker
 
-### Apps and Packages
+## 📦 Stack
 
-- `docs`: a [Next.js](https://nextjs.org/) app
-- `web`: another [Next.js](https://nextjs.org/) app
-- `@repo/ui`: a stub React component library shared by both `web` and `docs` applications
-- `@repo/eslint-config`: `eslint` configurations (includes `eslint-config-next` and `eslint-config-prettier`)
-- `@repo/typescript-config`: `tsconfig.json`s used throughout the monorepo
+| Layer | Tech |
+|--------|------|
+| **Frontend** | Vite, React, Bootstrap 5, Socket.io |
+| **Backend** | Fastify, Prisma, Socket.io, BullMQ |
+| **Data** | PostgreSQL, Redis |
+| **Build** | Turborepo, Docker |
+| **Tests** | Playwright, Cucumber (BDD) |
+| **Quality** | TypeScript, ESLint, Prettier |
 
-Each package/app is 100% [TypeScript](https://www.typescriptlang.org/).
+## ⚙️ Prerequisites
 
-### Utilities
+- **Node.js** >= 18
+- **pnpm** >= 9.0 (monorepo package manager)
+- **Docker + Docker Compose** (postgres + redis)
 
-This Turborepo has some additional tools already setup for you:
+## 🏃 Quick Start
 
-- [TypeScript](https://www.typescriptlang.org/) for static type checking
-- [ESLint](https://eslint.org/) for code linting
-- [Prettier](https://prettier.io) for code formatting
-
-### Build
-
-To build all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo build
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo build
-pnpm dlx turbo build
-pnpm exec turbo build
-```
-
-You can build a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
+### 1. Install dependencies
 
 ```sh
-turbo build --filter=docs
+pnpm install
 ```
 
-Without global `turbo`:
+### 2. Start databases
 
 ```sh
-npx turbo build --filter=docs
-pnpm exec turbo build --filter=docs
-pnpm exec turbo build --filter=docs
+docker-compose up -d
 ```
 
-### Develop
+Creates: PostgreSQL (port 5432) + Redis (port 6379)
 
-To develop all apps and packages, run the following command:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
+### 3. Database migrations
 
 ```sh
-cd my-turborepo
-turbo dev
+cd apps/backend
+pnpm db:push
 ```
 
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo dev
-pnpm exec turbo dev
-pnpm exec turbo dev
-```
-
-You can develop a specific package by using a [filter](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters):
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo dev --filter=web
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-pnpm exec turbo dev --filter=web
-```
-
-### Remote Caching
-
-> [!TIP]
-> Vercel Remote Cache is free for all plans. Get started today at [vercel.com](https://vercel.com/signup?utm_source=remote-cache-sdk&utm_campaign=free_remote_cache).
-
-Turborepo can use a technique known as [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching) to share cache artifacts across machines, enabling you to share build caches with your team and CI/CD pipelines.
-
-By default, Turborepo will cache locally. To enable Remote Caching you will need an account with Vercel. If you don't have an account you can [create one](https://vercel.com/signup?utm_source=turborepo-examples), then enter the following commands:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed (recommended):
-
-```sh
-cd my-turborepo
-turbo login
-```
-
-Without global `turbo`, use your package manager:
-
-```sh
-cd my-turborepo
-npx turbo login
-pnpm exec turbo login
-pnpm exec turbo login
-```
-
-This will authenticate the Turborepo CLI with your [Vercel account](https://vercel.com/docs/concepts/personal-accounts/overview).
-
-Next, you can link your Turborepo to your Remote Cache by running the following command from the root of your Turborepo:
-
-With [global `turbo`](https://turborepo.dev/docs/getting-started/installation#global-installation) installed:
-
-```sh
-turbo link
-```
-
-Without global `turbo`:
-
-```sh
-npx turbo link
-pnpm exec turbo link
-pnpm exec turbo link
-```
-
-## Testes E2E (Playwright + Cucumber)
-
-Os testes E2E utilizam [Playwright](https://playwright.dev/) com [Cucumber](https://cucumber.io/) e estão localizados em `packages/bdd`.
-
-### Instalação das dependências do Playwright
-
-Na primeira execução, instale o browser Chromium e suas dependências de sistema:
-
-```sh
-cd packages/bdd
-pnpm exec playwright install --with-deps chromium
-```
-
-### Pré-requisitos
-
-Certifique-se de que o backend e o frontend estão em execução antes de rodar os testes:
+### 4. Run dev (frontend + backend)
 
 ```sh
 pnpm dev
 ```
 
-### Executar todos os testes E2E
+- **Backend**: http://localhost:3000
+- **Frontend**: http://localhost:5173
+
+## 📝 Main Commands
+
+### Development
+
+```sh
+pnpm dev                    # Run all apps
+pnpm dev --filter=backend   # Backend only
+pnpm dev --filter=frontend  # Frontend only
+```
+
+### Build & Quality
+
+```sh
+pnpm build                  # Build everything
+pnpm lint                   # ESLint
+pnpm format                 # Prettier
+pnpm check-types            # TypeScript check
+```
+
+### Database
+
+```sh
+cd apps/backend
+pnpm db:push                # Apply schema
+pnpm db:migrate dev         # New migration
+pnpm db:studio              # Prisma UI
+```
+
+### Tests
+
+#### BDD (E2E with Playwright + Cucumber)
 
 ```sh
 cd packages/bdd
+
+# Install browsers (first time)
+pnpm exec playwright install --with-deps chromium
+
+# Run all tests
 pnpm test
-```
 
-### Executar apenas testes de backend
-
-```sh
-cd packages/bdd
+# Backend only
 pnpm test:backend
-```
 
-### Executar apenas testes de frontend
-
-```sh
-cd packages/bdd
+# Frontend only (requires frontend running at http://localhost:5173)
 WEB_BASE=http://localhost:5173 pnpm test:frontend
-```
 
-### Executar testes de login (frontend)
-
-```sh
-cd packages/bdd
+# Frontend login only
 WEB_BASE=http://localhost:5173 pnpm test:frontend:login
-```
 
-### Gerar relatório HTML
-
-```sh
-cd packages/bdd
+# Generate HTML report
 pnpm test:report
 ```
 
-## Prisma
+⚠️ **Note**: Frontend + Backend must be running via `pnpm dev` before running E2E tests.
 
-O schema Prisma foi centralizado em `packages/database/prisma/schema.prisma`.
+## 📁 Structure
 
-Os comandos de banco no backend (`db:generate`, `db:migrate`, `db:push`, `db:studio`) ja apontam para esse caminho.
+```
+wisiex/
+├── apps/
+│   ├── backend/            # Fastify + Prisma + PostgreSQL + Redis
+│   │   └── src/
+│   │       ├── routes/     # auth, me, orders, stats, trades
+│   │       ├── services/   # matching-engine, order-book, queue
+│   │       └── plugins/    # cors, jwt, prisma, redis, socket
+│   └── frontend/           # Vite + React + Bootstrap 5
+│       └── src/
+│           ├── pages/      # Login, Trading
+│           ├── components/ # Orders, Stats, OrderBook, Trades
+│           └── hooks/      # useAuth, useSocket
+├── packages/
+│   ├── bdd/                # E2E tests (Cucumber)
+│   ├── database/           # Centralized Prisma
+│   ├── shared/             # Shared types
+│   ├── tsconfig/           # TypeScript configs
+│   ├── eslint-config/      # Shared ESLint
+│   └── ui/                 # Base components
+└── docs/                   # Documentation
+```
 
-## Useful Links
+## 🔌 Environment Variables
 
-Learn more about the power of Turborepo:
+### Backend (`apps/backend/.env`)
 
-- [Tasks](https://turborepo.dev/docs/crafting-your-repository/running-tasks)
-- [Caching](https://turborepo.dev/docs/crafting-your-repository/caching)
-- [Remote Caching](https://turborepo.dev/docs/core-concepts/remote-caching)
-- [Filtering](https://turborepo.dev/docs/crafting-your-repository/running-tasks#using-filters)
-- [Configuration Options](https://turborepo.dev/docs/reference/configuration)
-- [CLI Usage](https://turborepo.dev/docs/reference/command-line-reference)
+```env
+DATABASE_URL=postgresql://user:pass@localhost:5432/wisiex
+REDIS_URL=redis://localhost:6379
+JWT_SECRET=your-secret-key
+```
+
+### Frontend (`apps/frontend/.env`)
+
+```env
+VITE_API_URL=http://localhost:3000
+```
+
+## 🚨 Troubleshooting
+
+| Error | Solution |
+|-------|----------|
+| `ECONNREFUSED:5432` | PostgreSQL not running: `docker-compose up -d` |
+| `ECONNREFUSED:6379` | Redis not running: `docker-compose up -d` |
+| `ERR_PNPM_WORKSPACE_NOT_FOUND` | Run `pnpm install` in root |
+| Frontend can't connect backend | Check `VITE_API_URL` in `apps/frontend/.env` |
+
+## 📚 Documentation
+
+- `docs/index.md` — Project overview
+- `docs/specifications.md` — Full requirements
+- `docs/balance-and-reserve.md` — Balance & reserve logic
+
+## 🤝 Contributing
+
+1. Feature branch: `git checkout -b feature/x`
+2. Code: write + test locally
+3. Lint: `pnpm lint && pnpm format`
+4. Tests: `pnpm test` (all must pass)
+5. Push + PR
+
+## 🧠 Tech Insights
+
+- **Monorepo**: Turborepo orchestrates multiple apps + packages. Runs tasks in parallel.
+- **Matching Engine**: BullMQ processes order queue → Redis stores state. No deadlock.
+- **Real-time**: Socket.io broadcasts trades + order book updates instantly.
+- **Security**: JWT, Prisma prepared queries, rate limiting (recommended).
+
+## 📜 Useful Links
+
+- [Turborepo Docs](https://turborepo.dev/)
+- [Fastify](https://www.fastify.io/)
+- [Prisma](https://www.prisma.io/)
+- [React](https://react.dev/)

@@ -103,46 +103,72 @@ export async function ordersRoutes(app: FastifyInstance) {
 
   app.delete<{ Params: { id: string } }>('/:id', {
     preHandler: [app.authenticate],
+    schema: {
+      params: {
+        type: 'object',
+        required: ['id'],
+        properties: {
+          id: { type: 'string' },
+        },
+      },
+    },
     async handler(request, reply) {
-      const order = await app.prisma.order.findUniqueOrThrow({
-        where: { id: request.params.id },
-      })
-
-      if (order.userId !== request.user.userId) {
-        return reply.status(403).send({ error: 'Unauthorized to cancel this order' })
-      }
-
-      if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
-        return reply.status(400).send({ error: 'Order cannot be cancelled' })
-      }
-
-      const remaining = Number(order.amount) - Number(order.filled)
-
-      const cancelled = await app.prisma.$transaction(async (tx) => {
-        const updated = await tx.order.update({
-          where: { id: order.id },
-          data: { status: 'CANCELLED' },
-          include: { user: true },
+      try {
+        const order = await app.prisma.order.findUniqueOrThrow({
+          where: { id: request.params.id },
         })
 
-        if (order.side === 'BUY') {
-          await tx.user.update({
-            where: { id: order.userId },
-            data: { usdBalance: { increment: remaining * Number(order.price) } },
+        if (order.userId !== request.user.userId) {
+          return reply.status(403).send({ error: 'Unauthorized to cancel this order' })
+        }
+
+        if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {
+          app.log.warn({ orderId: order.id, status: order.status }, 'Attempt to cancel already completed/cancelled order')
+          return reply.status(400).send({ error: 'Order cannot be cancelled' })
+        }
+
+        const remaining = Number(order.amount) - Number(order.filled)
+
+        const cancelled = await app.prisma.$transaction(async (tx) => {
+          const updated = await tx.order.update({
+            where: { id: order.id },
+            data: { status: 'CANCELLED' },
+            include: { user: true },
           })
-        } else {
-          await tx.user.update({
-            where: { id: order.userId },
-            data: { btcBalance: { increment: remaining } },
+
+          if (order.side === 'BUY') {
+            await tx.user.update({
+              where: { id: order.userId },
+              data: { usdBalance: { increment: remaining * Number(order.price) } },
+            })
+          } else {
+            await tx.user.update({
+              where: { id: order.userId },
+              data: { btcBalance: { increment: remaining } },
+            })
+          }
+
+          return updated
+        })
+
+        const updatedUser = await app.prisma.user.findUnique({ where: { id: order.userId } })
+
+        app.io.to(`user:${order.userId}`).emit('order:update', { order: serializeOrder(cancelled) })
+        if (updatedUser) {
+          app.io.to(`user:${order.userId}`).emit('balance:update', {
+            btcBalance: updatedUser.btcBalance.toString(),
+            usdBalance: updatedUser.usdBalance.toString(),
           })
         }
 
-        return updated
-      })
-
-      app.io.to(`user:${order.userId}`).emit('order:update', { order: serializeOrder(cancelled) })
-
-      return reply.send({ order: serializeOrder(cancelled) })
+        return reply.send({ order: serializeOrder(cancelled) })
+      } catch (err) {
+        app.log.error({ err }, 'Error cancelling order')
+        if (err instanceof Error && err.message.includes('record')) {
+          return reply.status(404).send({ error: 'Order not found' })
+        }
+        throw err
+      }
     },
   })
 

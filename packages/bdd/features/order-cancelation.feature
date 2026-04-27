@@ -61,3 +61,27 @@ Feature: Order Cancelation
     And "alice" is authenticated
     When "alice" cancels the order "order-123"
     Then the order status should be "CANCELLED"
+
+  Scenario: Cancel a partially filled order
+    Given the user has created a buy order of 1 BTC at 10000 USD
+    And 10000 USD was reserved
+    And 0.4 BTC has already been executed
+    And 4000 USD has already been spent
+    And 6000 USD is still reserved
+    When the user cancels the order
+    Then the order status should be "CANCELLED"
+    And the remaining 6000 USD should be returned to the available balance
+    And the reserved USD balance should be zero
+    And the user should keep the 0.4 BTC already acquired
+
+  Scenario: Cancel a partially filled sell order
+    Given the user has created a sell order of 1 BTC at 10000 USD
+    And 1 BTC was reserved
+    And 0.4 BTC has already been executed
+    And 0.4 BTC has already been sold
+    And 0.6 BTC is still reserved
+    When the user cancels the order
+    Then the order status should be "CANCELLED"
+    And the remaining 0.6 BTC should be returned to the available balance
+    And the reserved BTC balance should be zero
+    And the user should keep the USD received from the executed portion
