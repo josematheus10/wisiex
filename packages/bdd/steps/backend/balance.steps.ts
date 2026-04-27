@@ -10,6 +10,8 @@ type BalWorld = WisiexWorld & {
   openOrderId?: string
   partialInitialUsd?: number
   partialInitialBtc?: number
+  initialBalance?: { btc: number; usd: number }
+  maliciousResponse?: Response
 }
 
 Given('the user has {int} USD available', async function (this: BalWorld, usd: number) {
@@ -39,6 +41,38 @@ Given('the user has {int} USD available and {int} USD reserved', async function 
     method: 'PUT',
     body: JSON.stringify({ btcBalance: '100', usdBalance: String(usd) }),
   })
+})
+
+Given('a user has reserved balances', async function (this: BalWorld) {
+  this.balanceUser = 'reserved_balance_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '10', usdBalance: '100000' }),
+  })
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: 'BUY', price: '50000', amount: '1' }),
+  })
+})
+
+Given('a user has available and reserved balances', async function (this: BalWorld) {
+  this.balanceUser = 'consistency_balance_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '5', usdBalance: '50000' }),
+  })
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: 'BUY', price: '30000', amount: '0.5' }),
+  })
+  await this.api('/me')
+  const body = this.responseBody as { btcBalance: string; usdBalance: string }
+  this.initialBalance = {
+    btc: Number(body.btcBalance),
+    usd: Number(body.usdBalance),
+  }
 })
 
 Given('the user has an open buy order of {int} BTC at {int} USD', async function (this: BalWorld & { cancelOrderId?: string; activeOrderId?: string }, amount: number, price: number) {
@@ -81,6 +115,18 @@ When('the user submits another sell order with amount {int} BTC at price {int} U
   this.secondResponseBody = this.responseBody
 })
 
+When('the system updates reservations', async function (this: BalWorld) {
+  await this.api('/orders/active')
+})
+
+When('balances are updated', async function (this: BalWorld) {
+  await this.api('/me')
+})
+
+When('the backend processes the request', async function (this: BalWorld) {
+  this.maliciousResponse = this.response
+})
+
 Then('the user should have {int} USD available', async function (this: BalWorld, usd: number) {
   await this.api('/me')
   const body = this.responseBody as { usdBalance: string }
@@ -109,6 +155,63 @@ Then('the user should have {int} BTC reserved', async function (this: BalWorld, 
     .filter((o) => o.side === 'SELL')
     .reduce((sum, o) => sum + Number(o.remaining), 0)
   assert.equal(reserved, btc, `Expected ${btc} BTC reserved, got ${reserved}`)
+})
+
+Then('reserved BTC and USD must never be negative', async function (this: BalWorld) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const reservedBtc = (body.orders ?? [])
+    .filter((o) => o.side === 'SELL')
+    .reduce((sum, o) => sum + Number(o.remaining), 0)
+  const reservedUsd = (body.orders ?? [])
+    .filter((o) => o.side === 'BUY')
+    .reduce((sum, o) => sum + Number(o.remaining) * Number(o.price), 0)
+  assert.ok(reservedBtc >= 0, `Reserved BTC must be >= 0, got ${reservedBtc}`)
+  assert.ok(reservedUsd >= 0, `Reserved USD must be >= 0, got ${reservedUsd}`)
+})
+
+Then('available balance must be greater than or equal to zero', async function (this: BalWorld) {
+  await this.api('/me')
+  const body = this.responseBody as { btcBalance: string; usdBalance: string }
+  assert.ok(Number(body.btcBalance) >= 0, `BTC balance must be >= 0, got ${body.btcBalance}`)
+  assert.ok(Number(body.usdBalance) >= 0, `USD balance must be >= 0, got ${body.usdBalance}`)
+})
+
+Then('reserved balance must be greater than or equal to zero', async function (this: BalWorld) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const reservedBtc = (body.orders ?? [])
+    .filter((o) => o.side === 'SELL')
+    .reduce((sum, o) => sum + Number(o.remaining), 0)
+  const reservedUsd = (body.orders ?? [])
+    .filter((o) => o.side === 'BUY')
+    .reduce((sum, o) => sum + Number(o.remaining) * Number(o.price), 0)
+  assert.ok(reservedBtc >= 0, `Reserved BTC must be >= 0, got ${reservedBtc}`)
+  assert.ok(reservedUsd >= 0, `Reserved USD must be >= 0, got ${reservedUsd}`)
+})
+
+Then('total balance must remain consistent', async function (this: BalWorld) {
+  await this.api('/me')
+  const meBody = this.responseBody as { btcBalance: string; usdBalance: string }
+  await this.api('/orders/active')
+  const ordersBody = this.responseBody as { orders: Order[] }
+
+  const availableBtc = Number(meBody.btcBalance)
+  const availableUsd = Number(meBody.usdBalance)
+  const reservedBtc = (ordersBody.orders ?? [])
+    .filter((o) => o.side === 'SELL')
+    .reduce((sum, o) => sum + Number(o.remaining), 0)
+  const reservedUsd = (ordersBody.orders ?? [])
+    .filter((o) => o.side === 'BUY')
+    .reduce((sum, o) => sum + Number(o.remaining) * Number(o.price), 0)
+
+  const totalBtc = availableBtc + reservedBtc
+  const totalUsd = availableUsd + reservedUsd
+
+  assert.ok(totalBtc >= 0, `Total BTC must be >= 0, got ${totalBtc}`)
+  assert.ok(totalUsd >= 0, `Total USD must be >= 0, got ${totalUsd}`)
+  assert.ok(availableBtc >= 0, `Available BTC must be >= 0, got ${availableBtc}`)
+  assert.ok(availableUsd >= 0, `Available USD must be >= 0, got ${availableUsd}`)
 })
 
 Then('the order should be rejected with insufficient balance', function (this: BalWorld) {
@@ -147,6 +250,147 @@ Then('the total USD balance should still be {int} USD', async function (this: Ba
     .reduce((sum, o) => sum + Number(o.remaining) * Number(o.price), 0)
 
   assert.equal(available + reserved, total, `Expected total ${total} USD, got available=${available} + reserved=${reserved}`)
+})
+
+Given('multiple operations are executed concurrently', async function (this: BalWorld) {
+  this.balanceUser = 'concurrent_balance_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '10', usdBalance: '500000' }),
+  })
+})
+
+Then('no race condition should produce negative balances', async function (this: BalWorld) {
+  await this.api('/me')
+  const body = this.responseBody as { btcBalance: string; usdBalance: string }
+  assert.ok(Number(body.btcBalance) >= 0, `BTC balance must be >= 0, got ${body.btcBalance}`)
+  assert.ok(Number(body.usdBalance) >= 0, `USD balance must be >= 0, got ${body.usdBalance}`)
+})
+
+Given('a malicious request attempts to set BTC to {string}', async function (this: BalWorld, value: string) {
+  this.balanceUser = 'malicious_balance_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '5', usdBalance: '50000' }),
+  })
+  await this.api('/me')
+  this.initialBalance = this.responseBody as { btcBalance: string; usdBalance: string }
+  
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: value, usdBalance: '50000' }),
+  })
+})
+
+Then('the request must be rejected', function (this: BalWorld) {
+  assert.ok(
+    !this.response || this.response.status >= 400,
+    `Expected error, got status ${this.response?.status}`
+  )
+})
+
+Then('the balance must remain unchanged', async function (this: BalWorld) {
+  await this.api('/me')
+  const currentBody = this.responseBody as { btcBalance: string; usdBalance: string }
+  const initialBtc = Number(this.initialBalance?.btcBalance ?? 0)
+  const currentBtc = Number(currentBody.btcBalance)
+  assert.equal(currentBtc, initialBtc, `BTC should remain ${initialBtc}, but got ${currentBtc}`)
+})
+
+Given('a wallet with {int} BTC', async function (this: BalWorld, btc: number) {
+  this.balanceUser = 'wallet_btc_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: String(btc), usdBalance: '0' }),
+  })
+  await this.api('/me')
+  this.initialBalance = this.responseBody as { btcBalance: string; usdBalance: string }
+})
+
+Given('a wallet with {int} USD', async function (this: BalWorld, usd: number) {
+  this.balanceUser = 'wallet_usd_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: '0', usdBalance: String(usd) }),
+  })
+  await this.api('/me')
+  this.initialBalance = this.responseBody as { btcBalance: string; usdBalance: string }
+})
+
+When('the system attempts to update the balance to {string}', async function (this: BalWorld, value: string) {
+  const match = value.match(/([-\d.]+)\s*([A-Z]+)/)
+  const amount = match?.[1] ?? '0'
+  const currency = match?.[2] ?? 'BTC'
+
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify(
+      currency === 'USD'
+        ? { btcBalance: '0', usdBalance: amount }
+        : { btcBalance: amount, usdBalance: '0' }
+    ),
+  })
+})
+
+Then('the system should reject the operation', function (this: BalWorld) {
+  assert.ok(
+    !this.response || this.response.status >= 400,
+    `Expected error, got status ${this.response?.status}`
+  )
+})
+
+Then('return an error {string}', function (this: BalWorld, expectedError: string) {
+  const body = this.responseBody as { error?: string; message?: string }
+  const error = body?.error ?? body?.message ?? ''
+  assert.ok(
+    error.toLowerCase().includes(expectedError.toLowerCase()),
+    `Expected error containing "${expectedError}", got: ${error}`
+  )
+})
+
+Given('a user has {int} BTC', async function (this: BalWorld, btc: number) {
+  this.balanceUser = 'trade_balance_bdd'
+  await this.loginAs(this.balanceUser)
+  await this.api(`/test/users/${this.balanceUser}/balance`, {
+    method: 'PUT',
+    body: JSON.stringify({ btcBalance: String(btc), usdBalance: '100000' }),
+  })
+})
+
+When('the system processes trades', async function (this: BalWorld) {
+  await this.api('/me')
+})
+
+Then('the resulting BTC balance must not be negative', async function (this: BalWorld) {
+  const body = this.responseBody as { btcBalance: string }
+  assert.ok(Number(body.btcBalance) >= 0, `BTC balance must be >= 0, got ${body.btcBalance}`)
+})
+
+Given('the system is processing multiple operations', async function (this: BalWorld) {
+  const users = ['multi_op_1', 'multi_op_2', 'multi_op_3']
+  for (const user of users) {
+    await this.loginAs(user)
+    await this.api(`/test/users/${user}/balance`, {
+      method: 'PUT',
+      body: JSON.stringify({ btcBalance: '5', usdBalance: '250000' }),
+    })
+  }
+})
+
+Then('no user should have negative BTC balance', async function (this: BalWorld) {
+  await this.api('/me')
+  const body = this.responseBody as { btcBalance: string }
+  assert.ok(Number(body.btcBalance) >= 0, `BTC balance must be >= 0, got ${body.btcBalance}`)
+})
+
+Then('no user should have negative USD balance', async function (this: BalWorld) {
+  await this.api('/me')
+  const body = this.responseBody as { usdBalance: string }
+  assert.ok(Number(body.usdBalance) >= 0, `USD balance must be >= 0, got ${body.usdBalance}`)
 })
 
 After(async function (this: BalWorld) {

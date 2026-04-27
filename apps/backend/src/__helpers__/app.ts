@@ -2,7 +2,7 @@ import { vi } from 'vitest'
 import Fastify, { type FastifyInstance } from 'fastify'
 import fastifyJwt from '@fastify/jwt'
 
-export function createMockPrisma() {
+export function createMockPrisma(): Record<string, any> {
   return {
     user: {
       findUnique: vi.fn(),
@@ -31,9 +31,9 @@ export function createMockPrisma() {
   }
 }
 
-export function createMockIo() {
-  const roomEmit = vi.fn()
-  const to = vi.fn().mockReturnValue({ emit: roomEmit })
+export function createMockIo(): Record<string, any> {
+  const roomEmit: any = vi.fn()
+  const to: any = vi.fn().mockReturnValue({ emit: roomEmit })
   return {
     emit: vi.fn(),
     to,
@@ -42,10 +42,10 @@ export function createMockIo() {
 }
 
 export async function buildTestApp(
-  prisma = createMockPrisma(),
+  prisma: Record<string, any> = createMockPrisma(),
   redis: Record<string, unknown> = {},
-  io = createMockIo(),
-): Promise<FastifyInstance & { prisma: ReturnType<typeof createMockPrisma>; io: ReturnType<typeof createMockIo> }> {
+  io: Record<string, any> = createMockIo(),
+): Promise<FastifyInstance & { prisma: Record<string, any>; io: Record<string, any> }> {
   const app = Fastify({ logger: false }) as any
 
   await app.register(fastifyJwt, { secret: 'test-secret' })
