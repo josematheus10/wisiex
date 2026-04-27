@@ -31,7 +31,7 @@ export const apiLogin = (username: string) =>
     body: JSON.stringify({ username }),
   })
 
-export const apiMe = (token: string) => request<{ user: User }>('/me', {}, token)
+export const apiMe = (token: string) => request<User>('/me', {}, token)
 
 export const apiCreateOrder = (data: CreateOrderRequest, token: string) =>
   request<{ order: Order }>('/orders', { method: 'POST', body: JSON.stringify(data) }, token)

@@ -46,9 +46,10 @@ Given('the user has an active order', async function (this: ActiveWorld) {
   this.lastOrderId = this.activeOrderId ?? null
 })
 
-When('the user cancels the order', async function (this: ActiveWorld) {
-  assert.ok(this.activeOrderId, 'Must have an active order ID')
-  await this.api(`/orders/${this.activeOrderId}`, { method: 'DELETE' })
+When('the user cancels the order', async function (this: ActiveWorld & { cancelOrderId?: string; openOrderId?: string }) {
+  const orderId = this.cancelOrderId ?? this.activeOrderId ?? this.openOrderId
+  assert.ok(orderId, 'Must have an order ID to cancel')
+  await this.api(`/orders/${orderId}`, { method: 'DELETE' })
 })
 
 Then('the order should be removed from active orders', async function (this: ActiveWorld) {

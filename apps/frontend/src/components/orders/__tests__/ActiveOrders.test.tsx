@@ -57,7 +57,21 @@ describe('ActiveOrders', () => {
     })
   })
 
-  it('shows alert when cancel fails', async () => {
+  it('silently moves already-executed order out of active when backend returns 400', async () => {
+    vi.mocked(apiCancelOrder).mockRejectedValue(new Error('Order cannot be cancelled'))
+    const onCancelled = vi.fn()
+    const order = makeOrder('o1', 'BUY')
+
+    render(<ActiveOrders orders={[order]} token="tok" onCancelled={onCancelled} />)
+
+    fireEvent.click(screen.getByRole('button', { name: '✕' }))
+
+    await vi.waitFor(() => {
+      expect(onCancelled).toHaveBeenCalledWith({ ...order, status: 'COMPLETED' })
+    })
+  })
+
+  it('shows alert when cancel fails with unexpected error', async () => {
     vi.mocked(apiCancelOrder).mockRejectedValue(new Error('Cancel failed'))
     const alertSpy = vi.spyOn(window, 'alert').mockImplementation(() => {})
 

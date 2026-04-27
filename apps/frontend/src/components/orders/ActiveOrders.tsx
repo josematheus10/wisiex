@@ -8,11 +8,15 @@ interface Props {
 }
 
 export function ActiveOrders({ orders, token, onCancelled }: Props) {
-  async function cancel(id: string) {
+  async function cancel(order: Order) {
     try {
-      const { order } = await apiCancelOrder(id, token)
-      onCancelled(order)
+      const { order: updated } = await apiCancelOrder(order.id, token)
+      onCancelled(updated)
     } catch (err) {
+      if (err instanceof Error && err.message === 'Order cannot be cancelled') {
+        onCancelled({ ...order, status: 'COMPLETED' })
+        return
+      }
       alert(err instanceof Error ? err.message : 'Cancel failed')
     }
   }
@@ -43,7 +47,7 @@ export function ActiveOrders({ orders, token, onCancelled }: Props) {
                 <td className="text-end">
                   <button
                     className="btn btn-link btn-sm text-danger p-0"
-                    onClick={() => cancel(order.id)}
+                    onClick={() => cancel(order)}
                   >
                     ✕
                   </button>

@@ -37,22 +37,26 @@ Given('the user has {int} USD available and {int} USD reserved', async function 
   })
 })
 
-Given('the user has an open buy order of {int} BTC at {int} USD', async function (this: BalWorld, amount: number, price: number) {
+Given('the user has an open buy order of {int} BTC at {int} USD', async function (this: BalWorld & { cancelOrderId?: string; activeOrderId?: string }, amount: number, price: number) {
   await this.api('/orders', {
     method: 'POST',
     body: JSON.stringify({ side: 'BUY', price: String(price), amount: String(amount) }),
   })
   const body = this.responseBody as { order: Order }
   this.openOrderId = body?.order?.id
+  this.cancelOrderId = body?.order?.id
+  this.activeOrderId = body?.order?.id
 })
 
-Given('the user has an open sell order of {int} BTC at {int} USD', async function (this: BalWorld, amount: number, price: number) {
+Given('the user has an open sell order of {int} BTC at {int} USD', async function (this: BalWorld & { cancelOrderId?: string; activeOrderId?: string }, amount: number, price: number) {
   await this.api('/orders', {
     method: 'POST',
     body: JSON.stringify({ side: 'SELL', price: String(price), amount: String(amount) }),
   })
   const body = this.responseBody as { order: Order }
   this.openOrderId = body?.order?.id
+  this.cancelOrderId = body?.order?.id
+  this.activeOrderId = body?.order?.id
 })
 
 When('the user submits another buy order with amount {int} BTC and price {int} USD', async function (this: BalWorld, amount: number, price: number) {

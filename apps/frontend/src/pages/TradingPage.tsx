@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type { MarketStats, Order, OrderBook, Trade, User } from '@wisiex/shared'
 import {
   apiActiveOrders,
+  apiMe,
   apiOrderBook,
   apiOrderHistory,
   apiStats,
@@ -41,6 +42,7 @@ export function TradingPage({ user, token, onLogout }: Props) {
       apiOrderBook().then((r) => setOrderBook(r.orderBook)),
       apiActiveOrders(token).then((r) => setActiveOrders(r.orders)),
       apiOrderHistory(token).then((r) => setHistory(r.orders)),
+      apiMe(token).then((r) => setBalance({ btc: r.btcBalance, usd: r.usdBalance })),
     ])
   }, [token])
 

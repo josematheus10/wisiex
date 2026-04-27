@@ -32,15 +32,10 @@ describe('ordersRoutes', () => {
     await app.close()
   })
 
-  it('POST / creates a BUY order and enqueues it after deducting USD balance', async () => {
+  it('POST / creates a BUY order atomically and enqueues it', async () => {
     const orderRow = makeOrder()
-    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: 'user1',
-      usdBalance: { toString: () => '100000' },
-      btcBalance: { toString: () => '100' },
-    })
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
-    mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 })
     mockPrisma.order.create.mockResolvedValue(orderRow)
 
     const res = await app.inject({
@@ -54,20 +49,15 @@ describe('ordersRoutes', () => {
     const body = res.json()
     expect(body.order.side).toBe('BUY')
     expect(enqueueOrder).toHaveBeenCalledWith({}, 'order1')
-    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+    expect(mockPrisma.user.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ usdBalance: expect.any(Object) }) }),
     )
   })
 
-  it('POST / creates a SELL order and deducts BTC balance', async () => {
+  it('POST / creates a SELL order atomically and deducts BTC', async () => {
     const orderRow = makeOrder({ side: 'SELL' })
-    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: 'user1',
-      usdBalance: { toString: () => '100000' },
-      btcBalance: { toString: () => '100' },
-    })
     mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
-    mockPrisma.user.update.mockResolvedValue(undefined)
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 1 })
     mockPrisma.order.create.mockResolvedValue(orderRow)
 
     const res = await app.inject({
@@ -78,17 +68,14 @@ describe('ordersRoutes', () => {
     })
 
     expect(res.statusCode).toBe(201)
-    expect(mockPrisma.user.update).toHaveBeenCalledWith(
+    expect(mockPrisma.user.updateMany).toHaveBeenCalledWith(
       expect.objectContaining({ data: expect.objectContaining({ btcBalance: expect.any(Object) }) }),
     )
   })
 
-  it('POST / returns 400 with insufficient USD for BUY order', async () => {
-    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: 'user1',
-      usdBalance: { toString: () => '1000' },
-      btcBalance: { toString: () => '100' },
-    })
+  it('POST / returns 400 when insufficient USD for BUY (conditional update returns 0)', async () => {
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 0 })
 
     const res = await app.inject({
       method: 'POST',
@@ -101,12 +88,9 @@ describe('ordersRoutes', () => {
     expect(res.json().error).toBe('Insufficient balance')
   })
 
-  it('POST / returns 400 with insufficient BTC for SELL order', async () => {
-    mockPrisma.user.findUniqueOrThrow.mockResolvedValue({
-      id: 'user1',
-      usdBalance: { toString: () => '100000' },
-      btcBalance: { toString: () => '0.1' },
-    })
+  it('POST / returns 400 when insufficient BTC for SELL (conditional update returns 0)', async () => {
+    mockPrisma.$transaction.mockImplementation(async (cb: (tx: typeof mockPrisma) => Promise<unknown>) => cb(mockPrisma))
+    mockPrisma.user.updateMany.mockResolvedValue({ count: 0 })
 
     const res = await app.inject({
       method: 'POST',
@@ -230,7 +214,7 @@ describe('ordersRoutes', () => {
     )
   })
 
-  it('DELETE /:id returns 403 when order belongs to another user', async () => {
+  it('DELETE /:id returns 403 with ownership error when order belongs to another user', async () => {
     const order = makeOrder({ id: 'order1', userId: 'other-user' })
     mockPrisma.order.findUniqueOrThrow.mockResolvedValue(order)
 
@@ -241,6 +225,7 @@ describe('ordersRoutes', () => {
     })
 
     expect(res.statusCode).toBe(403)
+    expect(res.json().error).toBe('Unauthorized to cancel this order')
   })
 
   it('DELETE /:id returns 400 when order is already COMPLETED', async () => {

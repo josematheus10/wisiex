@@ -8,6 +8,7 @@ vi.mock('../../services/api.js', () => ({
   apiOrderBook: vi.fn(),
   apiActiveOrders: vi.fn(),
   apiOrderHistory: vi.fn(),
+  apiMe: vi.fn(),
   apiCancelOrder: vi.fn(),
   apiCreateOrder: vi.fn(),
 }))
@@ -23,7 +24,7 @@ vi.mock('../../hooks/useSocket.js', () => ({
 }))
 
 import { TradingPage } from '../TradingPage.js'
-import { apiStats, apiTrades, apiOrderBook, apiActiveOrders, apiOrderHistory, apiCancelOrder, apiCreateOrder } from '../../services/api.js'
+import { apiStats, apiTrades, apiOrderBook, apiActiveOrders, apiOrderHistory, apiMe, apiCancelOrder, apiCreateOrder } from '../../services/api.js'
 import { useSocket } from '../../hooks/useSocket.js'
 
 const mockUser: User = {
@@ -76,6 +77,7 @@ describe('TradingPage', () => {
     vi.mocked(apiOrderBook).mockResolvedValue({ orderBook: mockOrderBook })
     vi.mocked(apiActiveOrders).mockResolvedValue({ orders: [mockOrder] })
     vi.mocked(apiOrderHistory).mockResolvedValue({ orders: [] })
+    vi.mocked(apiMe).mockResolvedValue({ ...mockUser })
     mockSocket.on.mockReset()
     mockSocket.off.mockReset()
     vi.mocked(useSocket).mockReturnValue(mockSocketRef)
@@ -110,6 +112,17 @@ describe('TradingPage', () => {
     expect(apiOrderBook).toHaveBeenCalled()
     expect(apiActiveOrders).toHaveBeenCalledWith('tok')
     expect(apiOrderHistory).toHaveBeenCalledWith('tok')
+    expect(apiMe).toHaveBeenCalledWith('tok')
+  })
+
+  it('loads balance from apiMe on mount, not from stale user prop', async () => {
+    vi.mocked(apiMe).mockResolvedValue({ ...mockUser, btcBalance: '5', usdBalance: '50000' })
+
+    await act(async () => {
+      render(<TradingPage user={mockUser} token="tok" onLogout={vi.fn()} />)
+    })
+
+    expect(screen.getByText('5.00000000 BTC')).toBeInTheDocument()
   })
 
   it('renders stats bar after data loads', async () => {

@@ -32,36 +32,35 @@ export async function ordersRoutes(app: FastifyInstance) {
       const decimalPrice = new Decimal(price)
       const cost = decimalAmount.mul(decimalPrice)
 
-      const user = await app.prisma.user.findUniqueOrThrow({ where: { id: userId } })
+      let order
+      try {
+        order = await app.prisma.$transaction(async (tx) => {
+          let updated
+          if (side === 'BUY') {
+            updated = await tx.user.updateMany({
+              where: { id: userId, usdBalance: { gte: cost.toNumber() } },
+              data: { usdBalance: { decrement: cost.toNumber() } },
+            })
+          } else {
+            updated = await tx.user.updateMany({
+              where: { id: userId, btcBalance: { gte: decimalAmount.toNumber() } },
+              data: { btcBalance: { decrement: decimalAmount.toNumber() } },
+            })
+          }
 
-      if (side === 'BUY') {
-        if (new Decimal(user.usdBalance.toString()).lt(cost)) {
-          return reply.status(400).send({ error: 'Insufficient balance' })
-        }
-      } else {
-        if (new Decimal(user.btcBalance.toString()).lt(decimalAmount)) {
-          return reply.status(400).send({ error: 'Insufficient balance' })
-        }
-      }
+          if (updated.count === 0) throw new Error('Insufficient balance')
 
-      const order = await app.prisma.$transaction(async (tx) => {
-        if (side === 'BUY') {
-          await tx.user.update({
-            where: { id: userId },
-            data: { usdBalance: { decrement: cost.toNumber() } },
+          return tx.order.create({
+            data: { userId, side, price, amount },
+            include: { user: true },
           })
-        } else {
-          await tx.user.update({
-            where: { id: userId },
-            data: { btcBalance: { decrement: decimalAmount.toNumber() } },
-          })
-        }
-
-        return tx.order.create({
-          data: { userId, side, price, amount },
-          include: { user: true },
         })
-      })
+      } catch (err) {
+        if (err instanceof Error && err.message === 'Insufficient balance') {
+          return reply.status(400).send({ error: 'Insufficient balance' })
+        }
+        throw err
+      }
 
       await enqueueOrder(app.redis, order.id)
 
@@ -110,7 +109,7 @@ export async function ordersRoutes(app: FastifyInstance) {
       })
 
       if (order.userId !== request.user.userId) {
-        return reply.status(403).send({ error: 'Forbidden' })
+        return reply.status(403).send({ error: 'Unauthorized to cancel this order' })
       }
 
       if (order.status === 'COMPLETED' || order.status === 'CANCELLED') {

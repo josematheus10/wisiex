@@ -43,7 +43,7 @@ describe('api service', () => {
   })
 
   it('apiMe sends GET /me with Bearer token', async () => {
-    mockFetch.mockResolvedValue(mockJsonResponse({ user: { id: 'u1' } }))
+    mockFetch.mockResolvedValue(mockJsonResponse({ id: 'u1', username: 'alice', btcBalance: '100', usdBalance: '100000', createdAt: '2024-01-01T00:00:00.000Z' }))
 
     await apiMe('my-token')
 
