@@ -8,12 +8,16 @@ export class WisiexWorld extends World {
   token: string | null = null
   response: Response | null = null
   responseBody: unknown = null
+  lastResponse2: Response | null = null
+  lastResponseBody2: unknown = null
+  lastResponseBodySecondOrder: unknown = null
 
   browser: Browser | null = null
   page: Page | null = null
 
   /** ID da última ordem criada no cenário atual */
   lastOrderId: string | null = null
+  lastOrderId2: string | null = null
 
   constructor(options: IWorldOptions) {
     super(options)

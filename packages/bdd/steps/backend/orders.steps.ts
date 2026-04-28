@@ -9,6 +9,9 @@ type World = WisiexWorld & {
   partialInitialUsd?: number
   partialInitialBtc?: number
   walletOrderId?: string
+  lastResponse2?: Response
+  orderCount?: number
+  lastOrderId2?: string
 }
 
 async function sleep(ms: number) {
@@ -36,6 +39,18 @@ When(
 )
 
 When(
+  'the user submits a buy order with amount {int} BTC and price {int} USD with idempotency key {string}',
+  async function (this: World, amount: number, price: number, idempotencyKey: string) {
+    await this.api('/orders', {
+      method: 'POST',
+      body: JSON.stringify({ side: 'BUY', price: String(price), amount: String(amount), idempotencyKey }),
+    })
+    const body = this.responseBody as { order?: Order }
+    if (body?.order?.id) this.lastOrderId = body.order.id
+  },
+)
+
+When(
   'the user submits a sell order with amount {int} BTC and price {int} USD',
   async function (this: World, amount: number, price: number) {
     await this.api('/orders', {
@@ -47,11 +62,71 @@ When(
   },
 )
 
+When(
+  'the user submits a sell order with amount {int} BTC and price {int} USD with idempotency key {string}',
+  async function (this: World, amount: number, price: number, idempotencyKey: string) {
+    await this.api('/orders', {
+      method: 'POST',
+      body: JSON.stringify({ side: 'SELL', price: String(price), amount: String(amount), idempotencyKey }),
+    })
+    const body = this.responseBody as { order?: Order }
+    if (body?.order?.id) this.lastOrderId = body.order.id
+  },
+)
+
 Then('the order should be created', function (this: World) {
   assert.equal(this.response?.status, 201, `Expected 201, got ${this.response?.status}`)
   const body = this.responseBody as { order: Order }
   assert.ok(body?.order?.id, 'Response must contain order.id')
   this.lastOrderId = body.order.id
+})
+
+When('the user submits the same order again with idempotency key {string}', async function (this: World, idempotencyKey: string) {
+  this.lastResponse2 = this.response
+  this.lastResponseBody2 = this.responseBody
+  this.lastOrderId2 = this.lastOrderId
+  const previousBody = this.responseBody as { order?: Order }
+  const lastAmount = previousBody?.order?.amount
+  const lastPrice = previousBody?.order?.price
+  const lastSide = previousBody?.order?.side
+
+  await this.api('/orders', {
+    method: 'POST',
+    body: JSON.stringify({ side: lastSide, price: lastPrice, amount: lastAmount, idempotencyKey }),
+  })
+  
+  this.lastResponseBodySecondOrder = this.responseBody
+  const secondBody = this.responseBody as { order?: Order }
+  if (secondBody?.order?.id && secondBody.order.id !== this.lastOrderId2) {
+    this.lastOrderId2 = secondBody.order.id
+  }
+})
+
+Then('only one order should be created', async function (this: World) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const orderId = this.lastOrderId
+  const orders = (body.orders ?? []).filter((o) => o.id === orderId || o.id === this.lastOrderId2)
+  assert.equal(orders.length, 1, `Expected only 1 order with same idempotency key, got ${orders.length}`)
+})
+
+Then('both requests should return the same order ID', function (this: World) {
+  const firstBody = this.lastResponseBody2 as { order?: Order }
+  const secondBody = this.lastResponseBodySecondOrder as { order?: Order }
+  const firstId = firstBody?.order?.id
+  const secondId = secondBody?.order?.id
+  assert.equal(secondId, firstId, `Expected same order ID, got ${firstId} vs ${secondId}`)
+})
+
+Then('both orders should be created', async function (this: World) {
+  await this.api('/orders/active')
+  const body = this.responseBody as { orders: Order[] }
+  const orders = (body.orders ?? []).filter((o) => o.id === this.lastOrderId || o.id === this.lastOrderId2)
+  assert.equal(orders.length, 2, `Expected 2 orders with different idempotency keys, got ${orders.length}`)
+})
+
+Then('they should have different order IDs', function (this: World) {
+  assert.notEqual(this.lastOrderId, this.lastOrderId2, 'Orders with different idempotency keys should have different IDs')
 })
 
 Given('there is a sell order in the order book of {float} BTC at {int} USD', async function (this: World, amount: number, price: number) {

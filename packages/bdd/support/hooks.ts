@@ -35,13 +35,28 @@ AfterAll(async function () {
 Before({ tags: '@backend' }, async function (this: WisiexWorld) {
   const savedToken = this.token
   for (const username of TEST_USERS) {
-    await this.loginAs(username)
-    await this.api('/orders/active')
-    const body = this.responseBody as { orders: { id: string }[] } | null
-    if (body?.orders) {
-      for (const order of body.orders) {
-        await this.api(`/orders/${order.id}`, { method: 'DELETE' }).catch(() => null)
+    try {
+      await Promise.race([
+        this.loginAs(username),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Login timeout')), 5000))
+      ])
+      
+      await Promise.race([
+        this.api('/orders/active'),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('API timeout')), 5000))
+      ])
+      
+      const body = this.responseBody as { orders: { id: string }[] } | null
+      if (body?.orders) {
+        for (const order of body.orders) {
+          await Promise.race([
+            this.api(`/orders/${order.id}`, { method: 'DELETE' }).catch(() => null),
+            new Promise((_, reject) => setTimeout(() => reject(new Error('Delete timeout')), 5000))
+          ]).catch(() => null)
+        }
       }
+    } catch (error) {
+      console.warn(`Cleanup for ${username} failed:`, error instanceof Error ? error.message : error)
     }
   }
   this.token = savedToken

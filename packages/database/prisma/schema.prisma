@@ -17,16 +17,17 @@ model User {
 }
 
 model Order {
-  id        String      @id @default(cuid())
-  userId    String
-  user      User        @relation(fields: [userId], references: [id])
-  side      OrderSide
-  price     Decimal     @db.Decimal(20, 2)
-  amount    Decimal     @db.Decimal(20, 8)
-  filled    Decimal     @default(0) @db.Decimal(20, 8)
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
+  id               String      @id @default(cuid())
+  userId           String
+  user             User        @relation(fields: [userId], references: [id])
+  side             OrderSide
+  price            Decimal     @db.Decimal(20, 2)
+  amount           Decimal     @db.Decimal(20, 8)
+  filled           Decimal     @default(0) @db.Decimal(20, 8)
+  status           OrderStatus @default(PENDING)
+  idempotencyKey   String?     @unique
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
 
   makerTrades Trade[] @relation("MakerOrder")
   takerTrades Trade[] @relation("TakerOrder")

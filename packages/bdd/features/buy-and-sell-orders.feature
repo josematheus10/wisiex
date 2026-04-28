@@ -11,6 +11,27 @@ Feature: Create Orders
     When the user submits a sell order with amount 1 BTC and price 10000 USD
     Then the order should be created
 
+  Scenario: Idempotent buy order creation
+    Given the user has sufficient USD balance
+    When the user submits a buy order with amount 1 BTC and price 10000 USD with idempotency key "idem-buy-1"
+    And the user submits the same order again with idempotency key "idem-buy-1"
+    Then only one order should be created
+    And both requests should return the same order ID
+
+  Scenario: Idempotent sell order creation
+    Given the user has sufficient BTC balance
+    When the user submits a sell order with amount 1 BTC and price 10000 USD with idempotency key "idem-sell-1"
+    And the user submits the same order again with idempotency key "idem-sell-1"
+    Then only one order should be created
+    And both requests should return the same order ID
+
+  Scenario: Different idempotency keys create different orders
+    Given the user has 20000 USD available
+    When the user submits a buy order with amount 1 BTC and price 10000 USD with idempotency key "idem-different-1"
+    And the user submits the same order again with idempotency key "idem-different-2"
+    Then both orders should be created
+    And they should have different order IDs
+
   Scenario: Auto calculate total
     Given the user enters amount 2 BTC and price 10000 USD
     When the form is updated

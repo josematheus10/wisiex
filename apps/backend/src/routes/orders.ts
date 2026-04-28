@@ -8,6 +8,7 @@ interface CreateOrderBody {
   side: 'BUY' | 'SELL'
   price: string
   amount: string
+  idempotencyKey?: string
 }
 
 export async function ordersRoutes(app: FastifyInstance) {
@@ -21,12 +22,23 @@ export async function ordersRoutes(app: FastifyInstance) {
           side: { type: 'string', enum: ['BUY', 'SELL'] },
           price: { type: 'string' },
           amount: { type: 'string' },
+          idempotencyKey: { type: 'string' },
         },
       },
     },
     async handler(request, reply) {
-      const { side, price, amount } = request.body
+      const { side, price, amount, idempotencyKey } = request.body
       const userId = request.user.userId
+
+      if (idempotencyKey) {
+        const existingOrder = await app.prisma.order.findUnique({
+          where: { idempotencyKey },
+          include: { user: true },
+        })
+        if (existingOrder) {
+          return reply.status(201).send({ order: serializeOrder(existingOrder) })
+        }
+      }
 
       const decimalAmount = new Decimal(amount)
       const decimalPrice = new Decimal(price)
@@ -51,7 +63,7 @@ export async function ordersRoutes(app: FastifyInstance) {
           if (updated.count === 0) throw new Error('Insufficient balance')
 
           return tx.order.create({
-            data: { userId, side, price, amount },
+            data: { userId, side, price, amount, idempotencyKey },
             include: { user: true },
           })
         })
